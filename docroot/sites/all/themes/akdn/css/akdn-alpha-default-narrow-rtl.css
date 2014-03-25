@@ -1,0 +1,146 @@
+.no_mp {
+  margin: 0;
+  padding: 0;
+}
+.no_bullets {
+  list-style: none;
+  list-style-image: none;
+}
+.inline-block {
+  display: -moz-inline-stack;
+  display: inline-block;
+  vertical-align: top;
+  zoom: 1;
+  *display: inline;
+}
+/*Transformations*/
+/**
+ * This mixin will make the HTML list view format's <li>'s float left as inline.
+ */
+.views_html_list_float_left .view-content > .item-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  list-style-image: none;
+}
+.views_html_list_float_left .view-content > .item-list ul li {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  list-style-image: none;
+  float: left;
+  margin-right: 5px;
+}
+html[dir="rtl"] {
+  /***********************************************************************
+ *                                REGIONS                              *
+ ***********************************************************************/
+
+  /***********************************************************************
+ *                          HUB PAGE PANEL                             *
+ ***********************************************************************/
+
+  /***********************************************************************
+ *                             PRESS CENTRE                            *
+ ***********************************************************************/
+
+}
+html[dir="rtl"] #zone-user #region-user-first {
+  float: left;
+}
+html[dir="rtl"] #zone-user #region-menu .region-inner {
+  padding-left: 0;
+}
+html[dir="rtl"] #zone-user #region-menu #block-delta-blocks-logo {
+  float: right;
+}
+html[dir="rtl"] #zone-user #region-menu #block-delta-blocks-logo .logo-img {
+  margin-right: 0;
+  margin-left: 20px;
+}
+html[dir="rtl"] #zone-user #region-menu #block-block-17 {
+  padding-right: 30px;
+  margin-left: 6px;
+  margin-right: 0;
+  float: right;
+}
+html[dir="rtl"] #zone-user #region-menu #block-block-17 .content {
+  padding-left: 6px;
+  padding-right: 0;
+  border-left: 1px solid #808285;
+  border-right: 0;
+}
+html[dir="rtl"] #zone-user #region-menu #block-menu-block-6 ul.menu li {
+  border-right: none;
+  border-left: 1px solid #808285;
+  display: -moz-inline-stack;
+  display: inline-block;
+  vertical-align: top;
+  zoom: 1;
+  *display: inline;
+  padding: 0 6px;
+  background: #fff;
+}
+html[dir="rtl"] #zone-user #region-menu #block-menu-block-6 ul.menu li.last {
+  border-left: none;
+}
+html[dir="rtl"] #zone-user #region-menu #block-menu-block-6 ul.menu li.first {
+  padding-left: 6px;
+  padding-right: 0;
+}
+html[dir="rtl"] #zone-footer #mini-panel-footer_menus .pane-block.pane-menu-block-3 h2 {
+  padding-left: 0;
+  padding-right: 40px;
+}
+html[dir="rtl"] #zone-footer #mini-panel-footer_menus .pane-block.pane-menu-block-3 .pane-content {
+  padding-left: 0;
+  padding-right: 40px;
+}
+html[dir="rtl"] div.panel-display.omega-24-threerow-stacked div.panel-panel.panel-middle .pane-locale-language-content {
+  left: 0;
+}
+html[dir="rtl"] div.panel-display.omega-24-threerow-stacked div.panel-panel.panel-middle .pane-menu-block-2 {
+  left: 0;
+}
+html[dir="rtl"] div.panel-display.omega-24-threerow-stacked div.panel-panel.panel-middle .pane-print-print-links {
+  left: 0;
+}
+html[dir="rtl"] div.panel-display.omega-24-threerow-stacked div.panel-panel.panel-middle .pane-print-print-links .pane-content .print_mail {
+  float: none;
+}
+html[dir="rtl"] div.panel-display.omega-24-threerow-stacked div.panel-panel.panel-middle .pane-addthis-addthis {
+  width: auto;
+  left: 0;
+}
+html[dir="rtl"] div.panel-display.omega-24-threerow-stacked div.panel-panel.panel-middle .pane-featured-slideshow .field-content .slide-text {
+  left: 0;
+  right: auto;
+}
+html[dir="rtl"] div.panel-display.omega-24-threerow-stacked div.panel-panel.panel-middle .pane-featured-slideshow .slide-caption {
+  left: 0;
+  right: auto;
+}
+html[dir="rtl"] div.panel-display.omega-24-threecol-8-8-8-stacked div.grid-24:first-child .pane-locale-language-content {
+  left: 0;
+}
+html[dir="rtl"] div.panel-display.omega-24-threecol-8-8-8-stacked div.grid-24:first-child .pane-menu-block-2 {
+  left: 0;
+}
+html[dir="rtl"] div.panel-display.omega-24-threecol-8-8-8-stacked div.grid-24:first-child .pane-print-print-links {
+  left: 0;
+}
+html[dir="rtl"] div.panel-display.omega-24-threecol-8-8-8-stacked div.grid-24:first-child .pane-print-print-links .pane-content .print_mail {
+  float: none;
+}
+html[dir="rtl"] div.panel-display.omega-24-threecol-8-8-8-stacked div.grid-24:first-child .pane-addthis-addthis {
+  width: auto;
+  left: 0;
+}
+html[dir="rtl"] div.panel-display.omega-24-threecol-8-8-8-stacked div.grid-24:first-child .pane-featured-slideshow .field-content .slide-text {
+  right: auto;
+  left: 0;
+}
+html[dir="rtl"] div.panel-display.omega-24-threecol-8-8-8-stacked div.grid-24:first-child .pane-featured-slideshow .slide-caption {
+  right: auto;
+  left: 0;
+}

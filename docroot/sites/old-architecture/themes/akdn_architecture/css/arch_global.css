@@ -1,0 +1,512 @@
+/***********************************************************************
+ *                                MIXINS                               *
+ ***********************************************************************/
+.italic {
+  font-style: italic;
+}
+.bold {
+  font-weight: bold;
+}
+.hover-underline {
+  text-decoration: none;
+}
+.hover-underline:hover {
+  text-decoration: underline;
+}
+.no_mp {
+  margin: 0;
+  padding: 0;
+}
+.no_bullets {
+  list-style: none;
+  list-style-image: none;
+}
+.inline-block {
+  display: -moz-inline-stack;
+  display: inline-block;
+  vertical-align: top;
+  zoom: 1;
+  *display: inline;
+}
+/*Transformations*/
+/**
+ * This mixin will make the HTML list view format's <li>'s float left as inline.
+ */
+.views_html_list_float_left .view-content > .item-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  list-style-image: none;
+}
+.views_html_list_float_left .view-content > .item-list ul li {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  list-style-image: none;
+  float: left;
+  margin-right: 5px;
+}
+/***********************************************************************
+ *                              END MIXINS                             *
+ ***********************************************************************/
+/*************************************************************************
+ *                          AKDN Overrides                               *
+ *************************************************************************/
+html #zone-content #region-sidebar-second #block-menu-block-2 {
+  margin-top: 0;
+}
+/*************************************************************************
+ *                          Sitewide Elements                            *
+ *************************************************************************/
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: sans-serif;
+  margin-bottom: 10px;
+}
+h2.block-title {
+  margin-bottom: 10px;
+}
+a {
+  color: #000;
+  outline-color: #000;
+}
+a:visited,
+a:hover,
+a:active,
+a:link {
+  color: #000;
+  outline-color: #000;
+}
+h1#page-title {
+  color: #B49759;
+  font-size: 20px;
+  margin-bottom: 20px;
+  font-family: sans-serif;
+}
+.site-name-slogan {
+  float: none;
+}
+h1.site-name,
+h2.site-name {
+  font-size: 16px;
+  text-align: center;
+  font-weight: normal;
+  font-family: "Times New Roman", Times, serif;
+  text-transform: uppercase;
+  line-height: 18px;
+  padding-bottom: 10px;
+}
+h1.site-name .char1,
+h2.site-name .char1 {
+  font-size: 19px;
+}
+h1.site-name a,
+h2.site-name a {
+  text-decoration: none;
+}
+#zone-user {
+  padding-top: 10px;
+}
+#zone-user #region-user-first {
+  display: block;
+}
+#zone-user #region-user-first #block-block-16 {
+  width: 20%;
+  display: -moz-inline-stack;
+  display: inline-block;
+  vertical-align: top;
+  zoom: 1;
+  *display: inline;
+  float: left;
+  padding: 6px 0 7px;
+}
+#zone-user #region-user-first #block-block-16 a.mobile-menu-link {
+  padding: 4px 24px 6px 5px;
+  text-decoration: none;
+  background: #e8dfcd;
+  border: 1px solid #b49759;
+}
+#zone-user #region-user-first div.region-user-first-inner div.block-site-name {
+  float: left;
+}
+#zone-user #region-user-first div.region-user-first-inner div.block-site-name h1,
+#zone-user #region-user-first div.region-user-first-inner div.block-site-name h2 {
+  margin-top: 0;
+}
+#zone-user #region-user-first div.region-user-first-inner div.block-main-menu {
+  float: left;
+}
+#zone-user #region-user-first div.region-user-first-inner div.block-main-menu ul.menu {
+  list-style: none outside none;
+}
+#zone-user #region-user-first div.region-user-first-inner div.block-main-menu ul.menu li {
+  list-style: none outside none;
+  display: inline;
+}
+#zone-user #region-user-first div.region-user-first-inner div#block-search-form {
+  width: 80%;
+  float: right;
+}
+#zone-user #region-user-first div.region-user-first-inner div#block-search-form .container-inline {
+  background: #e8dfcd;
+  border: 1px solid #b49759;
+}
+#zone-user #region-user-first div.region-user-first-inner div#block-search-form .container-inline .form-item-search-block-form input {
+  background: transparent;
+  border: none;
+  width: 85%;
+  font-weight: bold;
+  padding-left: 10px;
+  padding-right: 0;
+}
+#zone-user #region-user-first div.region-user-first-inner div#block-search-form .container-inline .form-actions {
+  margin: 0;
+}
+#zone-user #region-user-first div.region-user-first-inner div#block-search-form .container-inline .form-actions input.form-submit {
+  border: 0;
+  background: transparent url(../images/magnifying_glass.png) top left no-repeat;
+  padding: 4px 5px 3px 5px;
+  margin: 0;
+  margin-top: 4px;
+  text-indent: -9999px;
+  width: 15px;
+}
+#zone-user #region-user-first div.region-user-first-inner div#block-search-form label {
+  display: none;
+}
+#zone-user #region-menu {
+  /* Mobile Menu */
+
+}
+#zone-user #region-menu #block-delta-blocks-logo {
+  display: none;
+}
+#zone-user #region-menu #block-block-7 {
+  display: none;
+}
+#zone-user #region-menu #block-menu-block-1 {
+  width: 100%;
+  height: 0;
+  overflow-x: hidden;
+  overflow-y: hidden;
+}
+#zone-user #region-menu #block-menu-block-1 ul.menu li {
+  padding: 10px 0;
+  margin: 0;
+  border: 1px solid #b49759;
+  border-bottom: none;
+  background: #f2edde;
+}
+#zone-user #region-menu #block-menu-block-1 ul.menu li.last {
+  border-bottom: 1px solid #b49759;
+}
+#zone-user #region-menu #block-menu-block-1 ul.menu li a,
+#zone-user #region-menu #block-menu-block-1 ul.menu li a:link,
+#zone-user #region-menu #block-menu-block-1 ul.menu li a:visited {
+  text-decoration: none;
+  padding: 7px 0 7px 5px;
+  color: #000;
+}
+#zone-user #region-menu #block-menu-block-1 ul.menu li a:hover,
+#zone-user #region-menu #block-menu-block-1 ul.menu li a:focus,
+#zone-user #region-menu #block-menu-block-1 ul.menu li a:active {
+  color: #b49759;
+}
+#zone-user #region-menu #block-menu-block-1.open {
+  transition: 1s;
+  -moz-transition: 1s;
+  -webkit-transition: 1s;
+  height: auto;
+  overflow-y: auto;
+}
+#zone-branding #region-branding {
+  padding: 20px 0;
+}
+#zone-content #region-sidebar-second h2 {
+  font-size: 14px;
+}
+#zone-content #region-sidebar-second .block {
+  margin-bottom: 20px;
+}
+#zone-content #region-sidebar-second .block-views {
+  margin-bottom: 5px;
+}
+#zone-content #region-sidebar-second .block-views select {
+  width: 100%;
+}
+#zone-content #region-sidebar-second .block-search {
+  margin-bottom: 5px;
+}
+#zone-content #region-sidebar-second .block-search input.form-text {
+  width: 70%;
+}
+#zone-content #region-sidebar-second .block-search input.form-submit {
+  text-align: center;
+  margin: 0;
+  width: 28%;
+}
+#zone-content #region-sidebar-second section.block-facetapi {
+  margin-bottom: 0px;
+}
+#zone-content #region-sidebar-second section.block-facetapi h2 {
+  margin: 5px 0 0;
+}
+#zone-content #region-sidebar-second section.block-facetapi select {
+  width: 100%;
+}
+#zone-footer #region-footer-first h2.pane-title,
+#zone-footer #region-footer-second h2.pane-title {
+  font-size: 14px;
+  font-weight: bold;
+}
+#mini-panel-bottom {
+  margin-left: 0px;
+}
+#mini-panel-bottom .panel-panel {
+  margin-bottom: 20px;
+}
+#mini-panel-bottom .panel-panel.grid-8 {
+  margin-bottom: 20px;
+}
+#mini-panel-bottom .panel-panel.grid-8 .pane-block.news-resource li {
+  list-style: none;
+  margin-left: 0;
+}
+#mini-panel-bottom a {
+  text-decoration: none;
+  font-weight: bold;
+}
+#mini-panel-bottom a:hover {
+  text-decoration: underline;
+}
+.field-name-field-press-kit .field-items {
+  margin-bottom: 10px;
+}
+.field-name-field-press-kit .field-items .field-item {
+  display: block;
+}
+#mini-panel-footer {
+  margin-left: 0;
+}
+#mini-panel-footer a {
+  text-decoration: none;
+  font-weight: bold;
+}
+#mini-panel-footer a:hover {
+  text-decoration: underline;
+}
+#mini-panel-footer h2.pane-title {
+  background: #e8dfcd;
+  font-size: 14px;
+  padding: 5px 0 5px 10px;
+  margin-bottom: 10px;
+  border-top: 1px solid #d9caac;
+  border-bottom: 1px solid #d9caac;
+}
+#mini-panel-footer h2.pane-title:first-child {
+  border-left: 1px solid #d9caac;
+}
+#mini-panel-footer h2.pane-title:last-child {
+  border-right: 1px solid #d9caac;
+}
+#mini-panel-footer .panel-pane:first-child h2.pane-title {
+  border-left: 1px solid #d9caac;
+}
+#mini-panel-footer .panel-pane:last-child h2.pane-title {
+  border-right: 1px solid #d9caac;
+}
+#mini-panel-footer .pane-block {
+  margin-left: 0;
+  margin-bottom: 20px;
+}
+#mini-panel-footer .pane-block .pane-content {
+  padding-left: 10px;
+}
+#mini-panel-footer .pane-block-3 {
+  display: none;
+}
+.tabs + #block-views-awards-by-cycle-block {
+  margin-top: 24px;
+}
+#block-views-awards-by-cycle-block h2.block-title {
+  color: #B49759;
+  font-size: 20px !important;
+  margin-bottom: 20px !important;
+  font-family: sans-serif;
+  margin-top: -24px;
+}
+#block-views-awards-by-cycle-block .views-row {
+  border-bottom: 1px dotted #D4C39F;
+  padding-bottom: 20px;
+}
+#block-views-awards-by-cycle-block .views-row.views-row-last {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+#block-views-awards-by-cycle-block .views-row .views-field-title {
+  margin-bottom: 8px;
+}
+#block-views-awards-by-cycle-block .views-row .views-field-title a {
+  font-size: 20px;
+  text-decoration: none;
+}
+#block-views-awards-by-cycle-block .views-row .views-field-field-project-image {
+  float: left;
+  margin: 0 11px 9px 0;
+}
+#block-views-awards-by-cycle-block .views-row .views-field-field-architect,
+#block-views-awards-by-cycle-block .views-row .views-field-field-completed-date,
+#block-views-awards-by-cycle-block .views-row .views-field-field-design-date,
+#block-views-awards-by-cycle-block .views-row .views-field-field-project-location,
+#block-views-awards-by-cycle-block .views-row .views-field-field-size {
+  display: block;
+  color: #666;
+}
+#block-views-awards-by-cycle-block .views-row .views-field-field-architect .views-label,
+#block-views-awards-by-cycle-block .views-row .views-field-field-completed-date .views-label,
+#block-views-awards-by-cycle-block .views-row .views-field-field-design-date .views-label,
+#block-views-awards-by-cycle-block .views-row .views-field-field-project-location .views-label,
+#block-views-awards-by-cycle-block .views-row .views-field-field-size .views-label {
+  font-style: italic;
+}
+#block-views-awards-by-cycle-block .views-row .views-field-body {
+  margin-top: 11px;
+  margin-bottom: -10px;
+}
+.region-sidebar-second .box-lightbrown {
+  margin-top: -40px;
+  -webkit-border-radius: 0 0 0 0;
+  -moz-border-radius: 0 0 0 0;
+  border-radius: 0 0 0 0;
+}
+/*************************************************************************
+ *                          Content Types                                *
+ *************************************************************************/
+/*************************************************************************
+ *                          Pages & Blocks                               *
+ *************************************************************************/
+.page-node .field-type-image {
+  float: left;
+  margin-bottom: 8px;
+  margin-right: 10px;
+  margin-left: 0;
+}
+.block-cycle-resources h2 {
+  border-bottom: 1px dashed #d9caac;
+}
+.block-cycle-resources ul li {
+  list-style: none outside none;
+  padding: 5px 0;
+  border-bottom: 1px dashed #d9caac;
+  margin-bottom: 5px;
+}
+.block-cycle-resources ul li a {
+  padding: 5px 0;
+  text-decoration: none;
+}
+.block-cycle-resources ul li a:hover {
+  text-decoration: underline;
+}
+/*************************************************************************
+ *                               Views                                   *
+ *************************************************************************/
+.view-cycles.view-display-id-page .views-row {
+  border-bottom: 1px dotted #d9caac;
+}
+.view-cycles.view-display-id-page .views-field-field-project-image {
+  float: left;
+  margin-right: 20px;
+  margin-bottom: 15px;
+}
+.view-cycles.view-display-id-page .views-field-title-field a {
+  font-size: 18px;
+  text-decoration: none;
+  font-weight: bold;
+}
+.view-cycles.view-display-id-page .views-field-title-field a:hover {
+  text-decoration: underline;
+}
+.view-cycles.view-display-id-page .views-label {
+  font-weight: bold;
+}
+.view-cycles.view-display-id-page .views-field-field-region,
+.view-cycles.view-display-id-page .views-field-field-architect,
+.view-cycles.view-display-id-page .views-field-field-completed-date,
+.view-cycles.view-display-id-page .views-field-field-size,
+.view-cycles.view-display-id-page .views-field-field-design-date,
+.view-cycles.view-display-id-page .views-field-field-building-type {
+  font-size: 11px;
+}
+.view-cycles.view-display-id-page .views-field-body {
+  padding-top: 15px;
+}
+.view-id-featured_slideshow .slide {
+  min-height: 0 !important;
+}
+.view-id-featured_slideshow .slide-text {
+  min-height: 70px;
+  margin-bottom: 15px;
+}
+.view-id-featured_slideshow .slide-text h2 {
+  font-size: 16px;
+  font-weight: normal;
+  margin-bottom: -5px;
+}
+.view-id-featured_slideshow .slide-text h3 {
+  font-size: 16px;
+  margin-bottom: 0px;
+}
+.view-id-featured_slideshow .flex-control-nav,
+.view-id-featured_slideshow .flex-direction-nav {
+  display: none;
+}
+.view-project-slideshow .flexslider ul.slides li img {
+  float: left;
+  padding: 0 5px 0 0;
+}
+.view-project-slideshow .flexslider ul.slides li .cp {
+  font-style: italic;
+  color: #777;
+}
+.view-project-slideshow .flex-nav-container {
+  margin-bottom: 0;
+}
+.view-project-slideshow .flex-control-nav,
+.view-project-slideshow .views-slideshow-controls-text-pause {
+  display: none;
+}
+.view-akaa-featured-slideshow .flex-control-nav li a {
+  text-indent: 0;
+  background-image: none;
+  background: #d9caac;
+  padding: 4px 4px 3px;
+  line-height: 1em;
+  width: 13px;
+  height: 13px;
+  display: block;
+}
+.view-akaa-featured-slideshow .flex-control-nav li a.active {
+  background: #f2edde;
+}
+/*************************************************************************
+ *                               Misc                                    *
+ *************************************************************************/
+.openlayers-popup img {
+  float: left;
+  padding: 0 10px 0 0;
+}
+.openlayers-popup p {
+  margin: 0;
+  padding: 0;
+  float: right;
+}
+.openlayers-popup a,
+.openlayers-popup a:hover,
+.openlayers-popup a:active,
+.openlayers-popup a:visited {
+  color: #fff;
+}

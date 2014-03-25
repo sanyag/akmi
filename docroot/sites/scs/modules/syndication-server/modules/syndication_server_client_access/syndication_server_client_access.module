@@ -1,0 +1,137 @@
+<?php
+
+/**
+ * Implementation of hook_init().
+ */
+function syndication_server_client_access_init() {
+
+
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function syndication_server_client_access_menu() {
+  $items['admin/config/syndication-server/access'] = array(
+    'title' => 'Client Access Control',
+    'description' => 'Taxonomy based access control for clients',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('syndication_server_client_access_config'),
+    'access arguments' => array('configure client api keys'),
+  );
+  return $items;
+}
+
+/**
+ * Configuration form.
+ */
+function syndication_server_client_access_config($form, &$form_state){
+  $vocabulary = taxonomy_get_vocabularies();
+  $vocab_selected = isset($form_state['values']['ssca_taxonomy']) ? $form_state['values']['ssca_taxonomy'] : variable_get('ssca_taxonomy', key($vocabulary));
+
+  $form['ssca_enable'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Enable taxonomy based access control.'),
+    '#default_value' => variable_get('ssca_enable', 0),
+  );
+
+  // Get all available vocabularies
+  foreach ($vocabulary as $item) {
+    $key = $item->vid;
+    $value = $item->name;
+    $vocab_array[$key] = $value;
+  }
+	$form['ssca_taxonomy'] = array(
+    '#type' => 'select',
+    '#title' => t('Selected Taxonomy'),
+    '#options' => $vocab_array,
+    '#default_value' => variable_get('ssca_taxonomy', 0),
+    '#description' => t('Select the vocabulary that should be used for access control.'),
+    '#ajax' => array(
+      'event' => 'change',
+      'callback' => '_syndication_server_client_access_conf_helper',
+      'wrapper' => 'dropdown_second_replace',
+    ),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="ssca_enable"]' => array('checked' => TRUE),
+      ),
+    ),
+  );
+
+  $form['ssca_clients'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Clients'),
+    '#collapsible' => FALSE,
+    '#prefix' => '<div id="dropdown_second_replace">',
+    '#suffix' => '</div>',
+    '#states' => array(
+      'visible' => array(
+        ':input[name="ssca_enable"]' => array('checked' => TRUE),
+      ),
+    ),
+
+  );
+
+  // Get all clients that are registerd with the server
+  $query = db_select('ss_client_keys','c')
+            ->fields('c', array('client_public', 'client_domain'))
+            ->execute();
+  foreach($query as $client) {
+    $form['ssca_clients']['ssca_client_' . $client->client_public] = array(
+      '#type' => 'select',
+      '#title' => $client->client_domain,
+      '#options' => _syndication_server_client_access_conf_terms($vocab_selected),
+      '#default_value' => variable_get('ssca_client_' . $client->client_public, 0),
+    );
+  }
+
+  return system_settings_form($form);
+}
+
+/**
+ * Ajax callback helper function
+ */
+function _syndication_server_client_access_conf_helper($form, $form_state){
+  return $form['ssca_clients'];
+}
+
+/**
+ * Helper function for configuration form.
+ */
+function _syndication_server_client_access_conf_terms($vid = 0){
+  if (!$vid) {
+    return array();
+  }
+  $terms = taxonomy_get_tree($vid);
+  foreach ($terms as  $term) {
+    $term_array[$term->tid] = $term->name;
+  }
+  return $term_array;
+}
+
+/**
+ * Implements sss_query_alter from the syndication server
+ *
+ * @param $op
+ *    The service action or operation being performed
+ * @param $query
+ *    The Database query object
+ * @param $args
+ *    Addional Arguments
+ */
+function syndication_server_client_access_sss_query_alter($op, $query, $args = array()) {
+  // Firts check if access control is enabled.
+  if (variable_get('ssca_enable', 0)){
+    switch($op){
+      case 'syndication_node_retrieve':
+        $query->join('taxonomy_index', 't', 'n.nid = t.nid');
+        if (isset($args['pubkey'])) {
+          $tid = variable_get('ssca_client_' . $args['pubkey'], 0);
+          $query->condition('t.tid', $tid);
+        }
+      break;
+    }
+  }
+  return $query;
+}

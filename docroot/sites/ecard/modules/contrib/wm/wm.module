@@ -1,0 +1,139 @@
+<?php
+
+/**
+ *
+ */
+function wm_page_build(&$page) {
+  global $user;
+
+  if (user_access('use wm toolbar')) {
+    $path = drupal_get_path('module', 'wm');
+    drupal_add_js("misc/jquery.cookie.js");
+    drupal_add_js("{$path}/js/jquery.mousewheel.js");
+    drupal_add_js("{$path}/js/jquery.jscrollpane.min.js");
+    drupal_add_js("{$path}/js/jquery.qtip.min.js");
+    drupal_add_js("{$path}/js/wm_script.js");
+    drupal_add_css("{$path}/css/jquery.jscrollpane.css");
+    drupal_add_css("{$path}/css/jquery.qtip.css");
+    drupal_add_css("{$path}/css/wm_style.css");
+
+    $cache = cache_get('wm-toolbar::' . $user -> uid);
+
+    if ($cache) {
+      $theme = $cache -> data;
+    }
+    else {
+      $blocks = module_invoke_all('wm_item');
+      drupal_alter('wm_blocks', $blocks);
+      $theme = theme('wm_toolbar', array('blocks' => $blocks, ));
+      cache_set('wm-toolbar::' . $user -> uid, $theme);
+    }
+
+    $page['page_bottom']['wm_toolbar'] = array(
+        '#type' => 'markup',
+        '#markup' => $theme,
+    );
+  }
+}
+
+/**
+ *
+ */
+function wm_wm_blocks_alter(&$blocks) {
+  //kpr($blocks);
+}
+
+/**
+ *
+ */
+function wm_theme($cache, $type, $theme, $path) {
+  $path = drupal_get_path('module', 'wm');
+  $items['wm_toolbar'] = array(
+      'variables' => array('blocks' => array(), ),
+      'template' => 'wm-toolbar',
+      'path' => $path . '/theme',
+      'file' => 'theme.inc',
+  );
+  $items['wm_toolbar_block'] = array(
+      'variables' => array('block' => NULL, ),
+      'template' => 'wm-toolbar-block',
+      'path' => $path . '/theme',
+      'file' => 'theme.inc',
+  );
+  $items['wm_toolbar_item'] = array('variables' => array('item' => NULL, ), );
+  $items['wm_toolbar_shortcut'] = array('variables' => array('item' => NULL, ), );
+  return $items;
+}
+
+/**
+ *
+ */
+function theme_wm_toolbar_item($item) {
+  return '<li class="item">' . theme('image', array(
+      'path' => $item['icon'],
+      'attributes' => array('class' => 'item-img')
+  )) . '<span class="item-text" >' . l($item['title'], $item['href'], array('attributes' => array('title' => $item['help']))) . '</span></li>';
+}
+
+/**
+ *
+ */
+function theme_wm_toolbar_shortcut($item) {
+  return l(theme('image', array('path' => $item['icon'])), $item['href'], array(
+      'html' => TRUE,
+      'attributes' => array('title' => $item['title'])
+  ));
+}
+
+/**
+ * Implements hook_permission().
+ */
+function wm_permission() {
+  return array(
+      'use wm toolbar' => array(
+          'title' => t('Use wm toolbar'),
+          'description' => t('Use wm toolbar.'),
+      ),
+      'view notifications' => array(
+          'title' => t('View notifications'),
+          'description' => t('View notifications.'),
+      ),
+  );
+}
+
+/**
+ *
+ */
+function wm_wm_item() {
+  $images = drupal_get_path('module', 'wm') . '/images/';
+
+  $items['status'] = array(
+      '#title' => 'Notification center',
+      '#class' => array('wm-status-wrapper'),
+      '#items' => array(
+          'updates' => array(
+              'icon' => $images . 'arrow-circle-double.png',
+              'title' => t('Updates'),
+              'href' => 'admin/reports/updates',
+              'help' => t('Review modules updates'),
+            //'notification_callback' => '',
+          ),
+          'logs' => array(
+              'icon' => $images . 'blue-document-list.png',
+              'title' => t('Logs'),
+              'href' => 'admin/reports/dblog',
+              'help' => t('View site\'s logs'),
+            //'notification_callback' => '',
+          ),
+          'report' => array(
+              'icon' => $images . 'clipboard.png',
+              'title' => t('Report'),
+              'href' => 'admin/reports/status',
+              'help' => t('View report'),
+            //'notification_callback' => '',
+          ),
+      ),
+  );
+
+  return $items;
+}

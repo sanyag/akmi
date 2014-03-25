@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the Solr search bundle 2 feature.
+ */
+
+include_once 'solr_search_bundle_2.features.inc';

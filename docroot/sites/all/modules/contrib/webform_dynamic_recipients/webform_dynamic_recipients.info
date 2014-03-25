@@ -1,0 +1,5 @@
+name = Webform Dynamic Recipients
+description = Permits the emailing of webform submissions to different recipients based on a select's value
+core = 7.x
+package = Webform
+dependencies[] = webform

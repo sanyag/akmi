@@ -1,0 +1,5 @@
+core = "7.x"
+description = "Custom functionality for the Museum site"
+name = "AKM Extras"
+package = "AKDN"
+version = "7.x-1.0"

@@ -1,0 +1,763 @@
+<?php
+
+define('AKDN_CACHE_TABLE', 'cache_akdn_custom');
+
+/**
+ * Implements hook_init().
+ */
+function custom_solr_init() {
+  // Make sure Drupal Ajax framework javascript is around.
+  drupal_add_library('system', 'drupal.ajax');
+}
+
+/**
+ * Implements hook_menu().
+ */
+function custom_solr_menu() {
+  $items = array();
+  $items['quotes/get/nojs/%'] = array(
+    'title' => 'Get Speech quotes',
+    'page callback' => 'custom_solr_get_speech_quotes',
+    'page arguments' => array(2, 3),
+    'type' => MENU_CALLBACK,
+    'access callback' => TRUE,
+    'access arguments' => 'Get Speech quotes',
+    'delivery callback' => 'ajax_deliver',
+  );
+  $items['quotes/get/ajax/%'] = array(
+    'delivery callback' => 'ajax_deliver',
+  ) + $items['quotes/get/nojs/%'];
+  return $items;
+}
+
+/**
+ * Ajax handler for Speech quotes
+ * @param  [string] $ajax [possible values 'ajax', 'nojs'].
+ * @param  [int] $nid  [opportunity nid].
+ */
+function custom_solr_get_speech_quotes($ajax, $nid) {
+  $is_ajax = $ajax === 'ajax';
+  try {
+    $show_more = t('| More Quotations');
+    $show_more_quotes_toggle = '<span id="show_more_quotes_for_' . $nid . '" class="show-more-quotes">' . $show_more . '</span>';
+    $content .= '<div class="other-quotes">';
+    $content .= views_embed_view('solr_quote_finder', $display_id = 'page_1', $nid);
+    if ($is_ajax) {
+      $commands = array();
+      $content .= '<span class="toggle-quote-display">' . t('Hide Quotations') . '</span>';
+      $content .= '</div>';
+      $commands[] = ajax_command_html('#get_speech_quotes_for_' . $nid, $content);
+      $commands[] = ajax_command_html('#show_more_quotes_for_' . $nid, $show_more_quotes_toggle);
+      return array(
+          '#type' => 'ajax',
+          '#commands' => $commands,
+      );
+    }
+  } catch (Exception $e) {
+    if (!$is_ajax) {
+      
+    }
+  }
+}
+
+/**
+ * Implements hook_entity_property_info_alter().
+ */
+function custom_solr_entity_property_info_alter(&$info) {
+  $info['node']['properties']['publish_date_year'] = array(
+      'type' => 'integer',
+      'label' => t('Year of publishing'),
+      'getter callback' => 'custom_solr_publish_date_year_callback',
+  );
+  $info['node']['properties']['event_date_start_year'] = array(
+      'type' => 'integer',
+      'label' => t('Year of Event Start'),
+      'getter callback' => 'custom_solr_event_date_start_year_callback',
+  );
+  $info['node']['properties']['event_date_end_year'] = array(
+      'type' => 'integer',
+      'label' => t('Year of Event End'),
+      'getter callback' => 'custom_solr_event_date_end_year_callback',
+  );
+  $info['node']['properties']['event_date_start_time'] = array(
+      'type' => 'integer',
+      'label' => t('Time of Event Start/Article,publication,podcast,speech,gallery,project Publish'),
+      'getter callback' => 'custom_solr_event_date_start_time_callback',
+  );
+  $info['node']['properties']['start_time'] = array(
+      'type' => 'integer',
+      'label' => t('Time of Event Start/Article,publication,podcast,speech,gallery,project Publish for What-s-new'),
+      'getter callback' => 'custom_solr_get_date_start_time_callback',
+  );
+  $info['node']['properties']['publish_time'] = array(
+      'type' => 'integer',
+      'label' => t('Publish date Time of Event,Article,publication,podcast,speech,gallery,project Publish publishing'),
+      'getter callback' => 'custom_solr_get_date_start_time_callback',
+  );
+  $info['node']['properties']['image_public_uri'] = array(
+      'type' => 'text',
+      'label' => t('Image Uri for nodes [event/article/publication/speech/gallery/video]'),
+      'getter callback' => 'custom_solr_image_public_uri_callback',
+  );
+  $info['node']['properties']['node_url_alias'] = array(
+      'type' => 'text',
+      'label' => t('Alias path for nodes'),
+      'getter callback' => 'custom_solr_node_url_alias_callback',
+  );
+  $info['node']['properties']['node_summary'] = array(
+      'type' => 'text',
+      'label' => t('Summary data of Node'),
+      'getter callback' => 'custom_solr_node_summary_callback',
+  );
+  $info['node']['properties']['node_short_title'] = array(
+      'type' => 'text',
+      'label' => t('Short title of Node'),
+      'getter callback' => 'custom_solr_node_short_title_callback',
+  );
+  $info['node']['properties']['speech_quotes_count'] = array(
+      'type' => 'integer',
+      'label' => t('Quotes count for Speech'),
+      'getter callback' => 'custom_solr_speech_quotes_count_callback',
+  );
+  $info['node']['properties']['speech_quotes'] = array(
+      'type' => 'text',
+      'label' => t('Quotes for a Speech'),
+      'getter callback' => 'custom_solr_speech_quotes_callback',
+  );
+  $info['node']['properties']['speech_quotes_nid'] = array(
+      'type' => 'integer',
+      'label' => t('Quotes Nid for a Speech'),
+      'getter callback' => 'custom_solr_speech_quotes_nid_callback',
+  );
+  $info['node']['properties']['quotes_data'] = array(
+      'type' => 'text',
+      'label' => t('Quotes data'),
+      'getter callback' => 'custom_solr_speech_quotes_data_callback',
+  );
+  $info['node']['properties']['entity_type'] = array(
+      'type' => 'text',
+      'label' => t('Type of the Node'),
+      'getter callback' => 'custom_solr_entity_type_callback',
+  );
+}
+
+/**
+ * Get type of the node [in case of an article, get the category]
+ * @param type $node
+ * @return type
+ */
+function custom_solr_entity_type_callback($node) {
+  $type = $node->type;
+  if ($node->type == 'article') {
+    $type = custom_solr_get_article_category_name($node->field_article_cat);
+  }
+  if ($node->type == 'podcast') {
+    $type = "Video";
+  }
+  $type = str_ireplace("_", " ", $type);
+  return $type;
+}
+
+/**
+ * Get type of the Article Category
+ * @param type $data
+ * @return type
+ */
+function custom_solr_get_article_category_name($data) {
+  $cat = '';
+  $name = 'article';
+  foreach ($data as $lang => $category) {
+    $cat = (isset($category[0]['tid'])) ? intval($category[0]['tid']) : '0';
+  }
+  if ($cat > 0) {
+    $term = taxonomy_term_load($cat);
+	  $name = $term->name;
+		$name = ($cat == 2611) ? "Media" : $name;
+  }
+  return $name;
+}
+
+/**
+ * Get Quotes data
+ * @param type $node
+ * @return type
+ */
+function custom_solr_speech_quotes_data_callback($node) {
+  if ($node->type == 'speech_quote') {
+    $data = custom_solr_node_summary_callback($node);
+    return $data;
+  }
+}
+
+/**
+ * Get Quotes nid for specific Speech
+ * @param type $node
+ * @return type
+ */
+function custom_solr_speech_quotes_nid_callback($node) {
+  if ($node->type == 'speech') {
+    $output = db_query("SELECT body.entity_id FROM {field_data_body} body
+    left join {node} n on (body.entity_id = n.nid)
+    left join {field_data_field_speech_reference} sr ON (n.nid = sr.entity_id)
+      WHERE sr.field_speech_reference_nid = :pspeech_nid and n.status=1 order by body.entity_id DESC limit 1", array(':pspeech_nid' => $node->nid)
+            )->fetchField();
+    return $output;
+  }
+}
+
+/**
+ * Get Quotes for specific Speech
+ * @param type $node
+ * @return type
+ */
+function custom_solr_speech_quotes_callback($node) {
+  if ($node->type == 'speech') {
+    $output = db_query("SELECT body.body_value quote FROM {field_data_body} body
+    left join {node} n on (body.entity_id = n.nid)
+    left join {field_data_field_speech_reference} sr ON (n.nid = sr.entity_id)
+      WHERE sr.field_speech_reference_nid = :pspeech_nid and n.status=1 order by body.entity_id DESC limit 1", array(':pspeech_nid' => $node->nid)
+            )->fetchField();
+    return $output;
+  }
+}
+
+/**
+ * Get Quotes count for specific Speech
+ * @param type $node
+ * @return type
+ */
+function custom_solr_speech_quotes_count_callback($node) {
+  if ($node->type == 'speech') {
+    $total_quotes = db_query("select count(n.nid) as total from {field_data_field_speech_reference} sr
+          left join {node} n  ON(sr.entity_id=n.nid) and sr.field_speech_reference_nid = :pnid 
+          and n.status=1 and bundle = :pbundle", array(':pnid' => $node->nid, ':pbundle' => 'speech_quote'))->fetchField();
+    return $total_quotes;
+  }
+}
+
+/**
+ * Get node short title
+ * @param type $node
+ */
+function custom_solr_node_short_title_callback($node) {
+  $summary = '';
+  foreach ($node->field_short_title as $lang => $node_data) {
+    $summary = $node_data[0]['safe_value'];
+    $summary = (empty($summary)) ? $node_data[0]['value'] : $summary;
+  }
+  return $summary;
+}
+
+/**
+ * Get node summary
+ * @param type $node
+ */
+function custom_solr_node_summary_callback($node) {
+  $summary = '';
+  foreach ($node->body as $lang => $node_data) {
+    $summary = $node_data[0]['safe_summary'];
+    $summary = (empty($summary)) ? $node_data[0]['value'] : $summary;
+  }
+  return $summary;
+}
+
+/**
+ * Get url alias for the the node
+ * @param type $node
+ */
+function custom_solr_node_url_alias_callback($node) {
+  $url = '';
+  $options = array('absolute' => TRUE);
+  $url = url('node/' . $node->nid, $options);
+  return $url;
+}
+
+/**
+ * Get uri for the the node image
+ * @param type $node
+ */
+function custom_solr_image_public_uri_callback($node) {
+  $type = $node->type;
+  $field_name = custom_solr_get_image_fieldname($type);
+  $uri = '';
+  if ($field_name != '') {
+    $uri = custom_solr_get_image_uri($node->{$field_name});
+  }
+  return $uri;
+}
+
+/**
+ * Get iamage field name of various content types
+ * @param type $type
+ * @return string
+ */
+function custom_solr_get_image_fieldname($type) {
+  $field_name = '';
+  switch ($type) {
+    case 'event' :
+      $field_name = 'field_event_image';
+      break;
+    case 'architecture_project' :
+    case 'project' :
+      $field_name = 'field_project_image';
+      break;
+    case 'agency' :
+      $field_name = 'field_agency_logo';
+      break;
+    case 'article' :
+      $field_name = 'field_article_img';
+      break;
+    case 'publication' :
+      $field_name = 'field_publication_image';
+      break;
+    case 'podcast' :
+      $field_name = 'field_podcast_image';
+      break;
+    case 'speech' :
+      $field_name = 'field_speech_image';
+      break;
+    case 'gallery' :
+      $field_name = 'field_gallery_images';
+      break;
+  }
+  return $field_name;
+}
+
+/**
+ * Get uri of the passed image data
+ * @param type $data
+ * @return type
+ */
+function custom_solr_get_image_uri($data) {
+  $uri = '';
+  foreach ($data as $lang => $image_data) {
+    $uri = $image_data[0]['uri'];
+    return $uri;
+  }
+}
+
+/**
+ * Getter callback for event start Time//Article,publication,podcast,speech,gallery,project Publish .
+ */
+function custom_solr_get_date_start_time_callback($node) {
+  $type = $node->type;
+  $year = 0;
+  $default_year = $node->created;
+  switch ($type) {
+    case 'event' :
+      $lang = $node->language;
+      $year = (isset($node->field_event_date[$lang][0]['value'])) ? $node->field_event_date[$lang][0]['value'] : $default_year;
+      $year = ($year == 0) ? $default_year : $year;
+      $year = intval($year);
+      return $year;
+    case 'article' :
+    case 'publication' :
+    case 'podcast' :
+    case 'speech' :
+    case 'gallery' :
+    case 'project' :
+      $year = (isset($node->field_publish_date['und'][0]['value'])) ? $node->field_publish_date['und'][0]['value'] : $default_year;
+      $year = ($year == 0) ? $default_year : $year;
+      $year = intval($year);
+      return $year;
+  }
+}
+
+/**
+ * Getter callback for event start Time//Article,publication,podcast,speech,gallery,project Publish .
+ */
+function custom_solr_event_date_start_time_callback($node) {
+  $type = $node->type;
+  $year = 0;
+  $default_year = $node->created;
+  switch ($type) {
+    case 'event' :
+      $lang = $node->language;
+      $year = (isset($node->field_event_date[$lang][0]['value'])) ? $node->field_event_date[$lang][0]['value'] : $default_year;
+      $year = ($year == 0) ? $default_year : $year;
+      $year = intval($year);
+      return $year;
+    case 'article' :
+    case 'publication' :
+    case 'podcast' :
+    case 'speech' :
+    case 'gallery' :
+    case 'project' :
+      $year = (isset($node->field_publish_date['und'][0]['value'])) ? $node->field_publish_date['und'][0]['value'] : $default_year;
+      $year = ($year == 0) ? $default_year : $year;
+      $year = intval($year);
+      return $year;
+  }
+}
+
+/**
+ * Getter callback for event start year.
+ */
+function custom_solr_event_date_start_year_callback($node) {
+  $type = $node->type;
+  $year = $default_year = date('Y', time());
+  switch ($type) {
+    case 'event' :
+      $lang = $node->language;
+      $year = date('Y', $node->field_event_date[$lang][0]['value']);
+      $year = intval($year);
+      $year = ($year == 0) ? $default_year : $year;
+      $year = intval($year);
+      return $year;
+  }
+}
+
+/**
+ * Getter callback for event end year.
+ */
+function custom_solr_event_date_end_year_callback($node) {
+  $type = $node->type;
+  $year = $default_year = date('Y', time());
+  switch ($type) {
+    case 'event' :
+      $lang = $node->language;
+      $year = date('Y', $node->field_event_date[$lang][0]['value2']);
+      $year = intval($year);
+      $year = ($year == 0) ? $default_year : $year;
+      $year = intval($year);
+      return $year;
+  }
+}
+
+/**
+ * Getter callback for publish year.
+ */
+function custom_solr_publish_date_year_callback($node) {
+  $type = $node->type;
+  switch ($type) {
+    case 'article' :
+    case 'publication' :
+    case 'podcast' :
+    case 'speech' :
+    case 'gallery' :
+    case 'project' :
+      $year = date('Y', $node->field_publish_date['und'][0]['value']);
+      $year = intval($year);
+      return $year;
+    case 'event' :
+      $lang = $node->language;
+      $year = date('Y', $node->field_event_date[$lang][0]['value']);
+      $year = intval($year);
+      $year = ($year == 0) ? $default_year : $year;
+      $year = intval($year);
+      return $year;
+  }
+}
+
+/**
+ * Check the generation time in the cache
+ * @param type $time_key
+ * @param type $interval_hour
+ * @return boolean
+ */
+function custom_solr_get_tree_status($last_execution_time, $interval_hour = .2) {
+  $elapsed_time = '';
+  $allowed_difference = 60 * 60 * $interval_hour; // Reload at each 3 hour
+  $reload_tree = FALSE;
+  if (empty($last_execution_time)) {
+    $reload_tree = TRUE;
+  } else {
+    $elapsed_time = time() - $last_execution_time;
+    if ($elapsed_time >= $allowed_difference) {
+      $reload_tree = TRUE;
+    }
+  }
+  return $reload_tree;
+}
+
+/**
+ * Process the optional parameter for solr search
+ * @param type $extra_parameter
+ * @return type
+ */
+function custom_solr_process_extra_parameter($extra_parameter = array()) {
+  $parameter = '';
+  if (is_array($extra_parameter)) {
+    foreach ($extra_parameter as $key => $value) {
+      $key = str_ireplace(":", "\%3A", $key);
+      $value = str_ireplace(":", "\%3A", $value);
+      $value = str_ireplace("/", "%2F", $value);
+      if (empty($value)) {
+        continue;
+      }
+      $parameter = (!empty($parameter)) ? $parameter . '+' . $key . '%3A' . $value : $key . '%3A' . $value;
+    }
+  }
+  return $parameter;
+}
+
+/**
+ * Implements of hook_flush_caches().
+ */
+function custom_solr_flush_caches() {
+  return array(AKDN_CACHE_TABLE);
+}
+
+/**
+ * Store the data in cache for each vocaubalry passed
+ * @param type $index
+ * @param type $extra_parameter
+ * @param type $fetch
+ * @param type $interval_hour
+ * @return string
+ */
+function custom_solr_get_solr_data_special($extra_parameter = array(), $fetch = 0, $interval_hour = .5, $facet = FALSE, $facet_field = '', $facet_limit = 100) {
+  $optional_parameter = custom_solr_process_extra_parameter_special($extra_parameter);
+  $key_string = implode(" ", $optional_parameter) . $facet_field;
+  $key = str_ireplace(' ', '_', $key_string);
+  $content = cache_get($key, AKDN_CACHE_TABLE);
+  $reload_tree = (isset($content->created)) ? custom_solr_get_tree_status($content->created, $interval_hour) : TRUE;
+  if ($reload_tree == FALSE) { // If timeout has not happened check for data presence
+    $data = $content->data;
+    if (($fetch == 1) && ($content->data == 0)) {
+      $reload_tree = TRUE;
+    }
+  }
+  if ($reload_tree == TRUE) {
+    $data = custom_solr_fetch_solr_special($optional_parameter, 0, $facet, $facet_field, $facet_limit);
+    cache_set($key, $data, AKDN_CACHE_TABLE);
+  }
+  return $data;
+}
+
+/**
+ * Process the optional parameter for solr search
+ * @param type $extra_parameter
+ * @return type
+ */
+function custom_solr_process_extra_parameter_special($fq = array(), $conjunction = 'OR') {
+  $parameter = '';
+  $final_fq = array();
+  foreach ($fq as $key => $data) {
+    $parameter = '';
+    $conjunction = (isset($data['conjunction'])) ? $data['conjunction'] : 'AND';
+    $enclose = (count($data['data']) > 1 ) ? 1 : 0;
+    foreach ($data['data'] as $pos => $value) {
+      $key = str_ireplace(":", "\%3A", $key);
+      $value = str_ireplace(":", "\%3A", $value);
+      $value = str_ireplace("/", "%2F", $value);
+      if (empty($value)) {
+        continue;
+      }
+
+      if ($enclose) {
+        $parameter = (!empty($parameter)) ? $parameter . '+' . $conjunction . '+%28' . $key . '%3A"' . $value . '"%29' : '%28' . $key . '%3A"' . $value . '"%29';
+      } else {
+        $parameter = (!empty($parameter)) ? $parameter . '+' . $conjunction . '+' . $key . '%3A"' . $value . '"' : $key . '%3A"' . $value . '"';
+      }
+    }
+    if (!empty($parameter)) {
+      $final_fq[] = ($enclose) ? '%28' . $parameter . '%29' : $parameter;
+    }
+  }
+  return $final_fq;
+}
+
+/**
+ * Fetch data from Solr
+ * @staticvar null $uri
+ * @param type $index
+ * @param type $extra_parameter
+ * @param type $limit
+ * @return int
+ */
+function custom_solr_fetch_solr_special($optional_parameter, $limit = 0, $facet = FALSE, $facet_field = '', $facet_limit = 100) {
+  static $uri = NULL;
+  if (!isset($uri)) {
+    $uri = custom_solr_get_solr_path();
+  }
+  if (empty($uri)) {
+    return 0;
+  }
+  $params = array('fl' => '', 'q' => '', 'rows' => '0', 'start' => '0', 'wt' => 'json', 'json.nl' => 'map');
+  $params['rows'] = intval($limit);
+  $data = '';
+  if ($facet) {
+    $data = 'facet=true&facet.field=' . $facet_field . '&facet.limit=' . $facet_limit;
+  }
+  if (is_array($optional_parameter)) {
+    foreach ($optional_parameter as $pos => $value) {
+      $data = ($data != '') ? $data . '&fq=' . $value : 'fq=' . $value;
+    }
+  }
+  foreach ($params as $param_key => $param_value) {
+    $data = ($data != '') ? $data . '&' . $param_key . '=' . $param_value : $param_key . '=' . $param_value;
+  }
+
+
+  $url = $uri . $data;
+//  print "<br />" . $url  . "</br>";
+  $options = array('method' => 'POST');
+  $result = drupal_http_request($url, $options);
+  if ($result->code == 200) {
+    $response = json_decode($result->data);
+    $output = array('numFound' => 0, 'facet' => $facet);
+    if ($facet) {
+      $output['numFound'] = (isset($response->response->numFound)) ? $response->response->numFound : 0;
+      $output['facets'] = $response->facet_counts->facet_fields;
+      return $output;
+    }
+    return (isset($response->response->numFound)) ? $response->response->numFound : 0;
+  }
+  return 0;
+}
+
+/**
+ * Get the missing image for various types of node
+ * @param type $row
+ * @return string
+ */
+function custom_solr_missing_solr_node_image($row) {
+  $output = '<div class="press-center-missing-image"></div>';
+  return $output;
+}
+
+/**
+ * Get header for views to show latest article and all articles
+ * @global type $language
+ * @param type $path
+ * @param type $whats_new_label
+ * @param type $view_all_label
+ * @param type $months_earlier
+ * @return string
+ */
+function custom_solr_get_what_new_header($path = '/', $whats_new_label = "What’s new", $view_all_label = '| View All', $months_earlier = 6) {
+  global $language;
+  $months_before = mktime(0, 0, 0, date('n') - $months_earlier, 1, date('y'));
+  $months_after = mktime(0, 0, 0, date('n') + 12, 1, date('y'));
+  $params['f[0]'] = "start_time:[" . $months_before . ' TO ' . $months_after . ']';
+  $what_new_link = l(t($whats_new_label), $path, array('language' => $language->language, 'query' => $params, 'html' => TRUE));
+  $link = l(t($view_all_label), $path);
+  $output = "<div class='press-center-header'><span class='press-center-header-label'>";
+  $output .= $what_new_link;
+  $output .= "</span>";
+  /*$output .= "<span class='press-center-header-link'>";
+  $output .= $link;
+  $output .= "</span>";
+  */
+  $output .= "</div>";
+  return $output;
+}
+
+/**
+ * Get header for views to show latest article
+ * @global type $language
+ * @param type $path
+ * @param type $whats_new_label
+ * @param type $view_all_label
+ * @param type $months_earlier
+ * @return string
+ */
+function custom_solr_get_what_new_header_home_page($path = '/', $whats_new_label = "What’s new", $months_earlier = 6) {
+  global $language;
+  $months_before = mktime(0, 0, 0, date('n') - $months_earlier, 1, date('y'));
+  $months_after = mktime(0, 0, 0, date('n') + 12, 1, date('y'));
+  $params['f[0]'] = "start_time:[" . $months_before . ' TO ' . $months_after . ']';
+  $what_new_link = l(t($whats_new_label), $path, array('language' => $language->language, 'query' => $params, 'html' => TRUE));
+  $output = "<div class='press-center-header'><span class='press-center-header-label'>";
+  $output .= $what_new_link;
+  $output .= "</span>";
+  $output .= "</div>";
+  return $output;
+}
+
+/**
+ * Get link for promoted article/event/speech o home page
+ * @global type $language
+ * @param type $path
+ * @param type $whats_new_label
+ * @return string
+ */
+function custom_solr_get_promoted_link_page($path = '/', $whats_new_label = "View All") {
+  global $language;
+  $params['f[0]'] = "promote:1";
+  $params['f[1]'] = "type:article";
+  $params['f[2]'] = "type:speech";
+  $params['f[3]'] = "type:event";
+  $what_new_link = l(t($whats_new_label), $path, array('language' => $language->language, 'query' => $params, 'html' => TRUE));
+  $output = "<div class='press-center-footer'><span class='press-center-footer-label'>";
+  $output .= $what_new_link;
+  $output .= "</span>";
+  $output .= "</div>";
+  return $output;
+}
+
+/**
+ * Get video embedded
+ * @global type $url
+ * @return string
+ */
+function custom_solr_get_video_embedded($url) {
+  $video_url = file_create_url($url);
+  $data = "<object id='flashObj' width='660' height='385' classid='clsid:D27CDB6E-AE6D-11cf-96B8-444553540000' codebase='http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=9,0,47,0'> 
+   <param name='movie' value='$video_url' /> 
+   <param name='bgcolor' value='#FFFFFF' /> 
+   <param name='flashVars' value='playerID=2212788304001&domain=embed' />
+   <param name='base' value='http://admin.brightcove.com' /> 
+   <param name='seamlesstabbing' value='false' /> 
+   <param name='allowFullScreen' value='true' /> 
+   <param name='swLiveConnect' value='true' /> 
+   <param name='allowScriptAccess' value='always' /> 
+   <embed src='$video_url' 
+     bgcolor='#FFFFFF' flashVars='playerID=2212788304001&domain=embed' 
+     base='http://admin.brightcove.com' name='flashObj' width='660' height='385' seamlesstabbing='false' type='application/x-shockwave-flash' 
+     allowFullScreen='true' swLiveConnect='true' 
+     allowScriptAccess='always' pluginspage='http://www.macromedia.com/shockwave/download/index.cgi?P1_Prod_Version=ShockwaveFlash'> 
+   </embed>
+</object>
+<p>&nbsp;</p>";
+  return $data;
+}
+
+/**
+* Implements hook_field_formatter_info().
+*/
+function custom_solr_field_formatter_info() {
+  $info = array(
+    'embedded_video_display' => array(
+      'label' => t('Embed video'),
+      'field types' => array('file'),
+      'description' => t('Displays Title as a link and URL as plain text.'),
+    ),
+  );
+  return $info;
+}
+
+/**
+* Implements hook_field_formatter_view().
+*/
+function custom_solr_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  $element = array();
+  switch ($display['type']) {
+    case 'embedded_video_display':
+      foreach ($items as $delta => $item) {
+        $element[$delta] = array(
+          '#theme' => 'custom_solr_embedded_video_display',
+          '#uri' => $entity->field_podcast_video['und'][0]['uri'],
+          '#video_size' => $entity->field_video_size['und'][0]['value'],
+        );
+     }
+      break;
+  }
+  return $element;
+}
+
+/**
+* Implements hook_theme().
+*/
+function custom_solr_theme() {
+  return array(
+    'custom_solr_embedded_video_display' => array(
+      'template' => 'custom_solr_embedded_video_display',
+      'variables' => array(
+        'uri' => NULL,
+        'video_size' => NULL,
+      ),
+    ),
+  );
+}

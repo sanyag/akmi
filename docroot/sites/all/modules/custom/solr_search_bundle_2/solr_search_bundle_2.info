@@ -1,0 +1,13 @@
+name = Solr search bundle 2
+description = Search pages for press release, galleries, videos, events
+core = 7.x
+package = Features
+php = 5.2.4
+version = 7.x-1.11
+project = solr_search_bundle_2
+dependencies[] = ctools
+dependencies[] = views
+features[ctools][] = views:views_default:3.0
+features[features_api][] = api:1
+features[views_view][] = akaa_solr_search_page
+features[views_view][] = solr_search_page

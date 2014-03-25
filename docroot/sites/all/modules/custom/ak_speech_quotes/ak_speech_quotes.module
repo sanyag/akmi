@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the Speech Quotes feature.
+ */
+
+include_once 'ak_speech_quotes.features.inc';

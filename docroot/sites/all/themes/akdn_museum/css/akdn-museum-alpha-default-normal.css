@@ -1,0 +1,39 @@
+/* This file will hold styles that are loaded using the same media query as the normal grid. */
+
+.region{
+padding-top: 0px;
+padding-bottom: 0px;
+}
+
+aside.advanced-layout-force-right{
+	float: right;
+}
+
+#akm-extras-search-block-form .form-item-keys{
+	float: left;
+	width: 250px;
+	margin: 0;
+}
+#akm-extras-search-block-form .form-item-keys label{
+	display: none;
+}
+#akm-extras-search-block-form #edit-keys{
+	background-color: #FAFAFA;
+	width: 98%;
+	font-size: 12px;
+}
+#akm-extras-search-block-form #edit-submit{
+	float: left;
+	width: 30px;
+}
+
+/*SHOW/HIDE ELEMENTS ON MOBILE*/
+#region-sidebar-second #block-block-4,
+#region-sidebar-second #block-menu-block-1,
+#region-sidebar-second #block-print-print-links,
+#region-sidebar-second #block-block-12{
+	display: block;
+}
+#region-sidebar-second #dd-menu{
+	display: none;
+}

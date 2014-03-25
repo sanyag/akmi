@@ -1,0 +1,409 @@
+
+
+body {
+  background-image: url(http://www.theismaili.org/img/background.gif);
+  font-family:arial;
+}
+
+.region {
+  background: white;
+}
+
+#region-content{
+  padding-bottom: 40px;
+}
+#section-header{
+  margin-top: 20px;
+}
+
+.rounded-box{
+  min-height: 20px;
+  padding: 19px;
+  margin-bottom: 20px;
+  background-color: #f5f5f5;
+  border: 1px solid #eee;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  -webkit-border-radius: 4px;
+  -moz-border-radius: 4px;
+  border-radius: 4px;
+  -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
+  -moz-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
+}
+
+
+div.messages{
+  margin: 0;
+}
+
+h1{
+  font-family: Georgia, "Times New Roman", Times, serif;
+  margin: 0;
+  padding: 0;
+  height: 36px;
+  font-size:24px;
+  color: #900;
+  line-height:120%;
+  font-weight:normal;
+}
+h2{
+  font-family: Georgia, "Times New Roman", Times, serif;
+  color: #000;
+  font-size:19px;
+  font-weight:normal;
+  line-height:120%;
+}
+
+a{
+  color:#a43126;
+}
+
+blockquote {
+  padding: 0 0 0 15px;
+  margin: 0 0 18px;
+  border-left: 5px solid #eeeeee;
+}
+blockquote p {
+  margin-bottom: 0;
+  font-size: 16px;
+  font-weight: 300;
+  line-height: 22.5px;
+}
+
+.label {
+  padding: 1px 3px 2px;
+  font-size: 9.75px;
+  font-weight: bold;
+  color: #ffffff;
+  text-transform: uppercase;
+  background-color: #999999;
+  -webkit-border-radius: 3px;
+  -moz-border-radius: 3px;
+  border-radius: 3px;
+}
+
+#headerframe { 
+  margin: 0 auto; 
+  padding: 0; 
+  width: 970px; 
+  text-align: left; 
+  background: white; 
+  font-family: Arial, Helvetica, sans-serif; 
+  font-size: 80%; 
+  line-height: 150%; 
+  text-align: center;
+}
+
+#topnav { 
+  background-color: #900; 
+  padding: 4px 25px 3px 25px; 
+}
+
+#search { 
+  text-align: right; float: right; 
+}
+
+#header { 
+  text-align: center; 
+  vertical-align: middle; 
+  height: 120px; 
+  padding: 0 25px; 
+  position: relative; 
+}
+
+#headerright { 
+text-transform: uppercase; 
+float: right; font-size: 26px; 
+line-height: 120px; 
+}
+
+#mainmenu { 
+  border-top: 1px solid #999; 
+  border-bottom: 1px solid #999; 
+  background: #e6e5d0; 
+  font-size: 95%; 
+}
+
+#searchform { 
+  display: inline; 
+  margin: 0; 
+  padding: 0; 
+}
+
+#searchform #searchterm { 
+  float: left; 
+  margin: 0 2px 0 0; 
+  width: 134px; 
+  border: 1px solid #333; 
+  font-size: 85%; 
+}
+
+#searchform #searchgo { 
+  float: left; 
+}
+
+#searchform #searchterm.nonfocus { 
+  font-style:italic;
+  color: #999;
+}
+
+#searchform #searchterm.focus { 
+  font-style: normal; 
+  color: #000;
+}
+
+#header img { 
+  margin-top: 30px; 
+}
+
+#header #backhome { 
+  position: relative; 
+  bottom: 0px; 
+  text-align: left; 
+}
+
+#header #backhome a { 
+  color: #666; 
+  text-decoration: none; 
+}
+
+#mainmenu ul { 
+  margin: 0; 
+  padding: 0; 
+  list-style: none; 
+  width: 100%; 
+  text-align: center; 
+}
+
+#mainmenu li { 
+  margin: 0; 
+  padding: 0; 
+  list-style: none; 
+  display: inline; 
+}
+
+#mainmenu li a { 
+  display: inline-block; 
+  padding: 6px 0; 
+  width: 193px; 
+  text-decoration: none; 
+  font-weight: normal; 
+  color: #666; 
+  border-right:1px dotted #999; 
+}
+
+#mainmenu li.last a { 
+  border-right: none; 
+}
+
+#mainmenu li a:hover{ 
+  color: black; 
+  background-color: white; 
+}
+
+.btn,
+input.btn,
+#ecard-admin-create .form-radios label {
+  display: inline-block;
+  padding: 4px 10px 4px;
+  font-size: 13px;
+  line-height: 18px;
+  color: #333333;
+  margin-right: 5px;
+  text-align: center;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.75);
+  background-color: #fafafa;
+  background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#ffffff), color-stop(25%, #ffffff), to(#e6e6e6));
+  background-image: -webkit-linear-gradient(#ffffff, #ffffff 25%, #e6e6e6);
+  background-image: -moz-linear-gradient(top, #ffffff, #ffffff 25%, #e6e6e6);
+  background-image: -ms-linear-gradient(#ffffff, #ffffff 25%, #e6e6e6);
+  background-image: -o-linear-gradient(#ffffff, #ffffff 25%, #e6e6e6);
+  background-image: linear-gradient(#ffffff, #ffffff 25%, #e6e6e6);
+  background-repeat: no-repeat;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffffff', endColorstr='#e6e6e6', GradientType=0);
+  border: 1px solid #ccc;
+  border-bottom-color: #bbb;
+  -webkit-border-radius: 4px;
+  -moz-border-radius: 4px;
+  border-radius: 4px;
+  -webkit-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);
+  -moz-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  *margin-left: .3em;
+}
+.btn:first-child,
+input.btn:first-child {
+  *margin-left: 0;
+}
+.btn:hover,
+input.btn:hover {
+  color: #333333;
+  text-decoration: none;
+  background-color: #e6e6e6;
+  background-position: 0 -15px;
+  -webkit-transition: background-position 0.1s linear;
+  -moz-transition: background-position 0.1s linear;
+  -ms-transition: background-position 0.1s linear;
+  -o-transition: background-position 0.1s linear;
+  transition: background-position 0.1s linear;
+}
+.btn:focus,
+input.btn:focus {
+  outline: thin dotted;
+  outline: 5px auto -webkit-focus-ring-color;
+  outline-offset: -2px;
+}
+.btn.active, .btn:active,
+input.btn.active, input.btn:active,
+#ecard-admin-create .form-radios label.ui-state-active {
+  background-image: none;
+  -webkit-box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.05);
+  -moz-box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.05);
+  background-color: #e6e6e6;
+  background-color: #d9d9d9 \9;
+  color: rgba(0, 0, 0, 0.5);
+  outline: 0;
+}
+.btn.disabled, .btn[disabled],
+input.btn.disabled, input.btn[disabled] {
+  cursor: default;
+  background-image: none;
+  background-color: #e6e6e6;
+  opacity: 0.65;
+  filter: alpha(opacity=65);
+  -webkit-box-shadow: none;
+  -moz-box-shadow: none;
+  box-shadow: none;
+}
+a.btn{
+  color: #333;
+  text-decoration: none;
+  font-weight: bold;
+  vertical-align: middle;
+}
+.btn-small,
+input.btn-small {
+  padding: 5px 9px;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+input.btn-success,
+.btn-success {
+  background-color: #5bb75b;
+  background-image: -moz-linear-gradient(top, #62c462, #51a351);
+  background-image: -ms-linear-gradient(top, #62c462, #51a351);
+  background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#62c462), to(#51a351));
+  background-image: -webkit-linear-gradient(top, #62c462, #51a351);
+  background-image: -o-linear-gradient(top, #62c462, #51a351);
+  background-image: linear-gradient(top, #62c462, #51a351);
+  background-repeat: repeat-x;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#62c462', endColorstr='#51a351', GradientType=0);
+  border-color: #51a351 #51a351 #387038;
+  border-color: rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.25);
+  filter: progid:DXImageTransform.Microsoft.gradient(enabled = false);
+}
+
+input.btn-success:hover,
+input.btn-success:active,
+input.btn-success.active,
+input.btn-success.disabled,
+input.btn-success[disabled],
+.btn-success:hover,
+.btn-success:active,
+.btn-success.active,
+.btn-success.disabled,
+.btn-success[disabled] {
+  background-color: #51a351;
+}
+
+input.btn-success:active, input.btn-success.active,
+.btn-success:active, .btn-success.active {
+  background-color: #408140 \9;
+}
+
+.view-id-templates table,
+.view-id-templates table td,
+.view-id-templates table tr,
+.view-id-templates table tbody{
+  background-color: #fff;
+  border: none;
+}
+
+.view-id-templates table td{
+  text-align: center;
+  vertical-align: middle;
+  margin-bottom:30px;
+}
+.view-id-templates table td a{
+  text-decoration: none;
+}
+
+.view-id-templates .views-field-field-template-image img {
+  padding:1px;
+  border:1px solid #ccc;
+}
+
+.view-id-templates .views-field-title {
+  font-size:13px;
+  padding-top:4px;
+  margin-bottom:30px;
+}
+
+#ecard-admin-create .form-radios div.form-item{
+  display: inline-block;
+}
+
+#ecard-admin-create .form-item-sender-message .description {
+  font-style: italic; 
+}
+
+#recipient-container fieldset{
+  clear: both;
+}
+#recipient-container .form-type-textfield{
+  width: 50%;
+  float: left;
+  margin: 0;
+}
+#recipient-container .form-type-textfield input{
+  width: 97%;
+}
+#add-recipient-btn{
+  text-align: right;
+}
+#ecard-preview-to{
+  float: right;
+  width: 50%;
+}
+#ecard-preview-text{
+  width:50%;
+  margin: 20px 0px;
+}
+
+.node-type-campaign .content .field-name-campaign-message .field-item h3 {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size:15px;
+  margin: 15px 0;
+
+}
+
+.node-type-campaign .content .field-name-campaign-message .field-item a {
+  color: #A43126;
+  text-decoration:underline;
+}
+
+.node-type-campaign .content .field-name-campaign-message .field-item a:hover {
+  text-decoration:none;
+}
+
+#cboxWrapper #cboxContent #cboxClose {
+  text-indent: -120px;
+  text-transform:uppercase;
+  font-weight:bold;
+  padding-top:2px;
+  color: #C00;
+  font-size:14px;
+}

@@ -1,0 +1,121 @@
+<?php
+
+/**
+ * @file
+ * Code that sets up hooks for further processing
+ */
+
+/**
+ * Implements hook_init().
+ *
+ * Includes the rest of the files we need to get things done
+ */
+function webform_dynamic_recipients_init() {
+
+  module_load_include('inc', 'webform_dynamic_recipients', 'webform_dynamic_recipients.admin');
+
+}
+
+/**
+ * Implements hook_form_alter().
+ *
+ * Modify webform editing forms & add submit handler to webform forms
+ */
+function webform_dynamic_recipients_form_alter(&$form, &$form_state, $form_id) {
+
+  if ('webform_component_edit_form' === $form_id) {
+    // Component editor
+    webform_dynamic_recipients_edit_form($form, $form_state, $form_id);
+  }
+  elseif ('webform_emails_form' === $form_id) {
+    // Webform email configuration
+    webform_dynamic_recipients_email_form($form, $form_state, $form_id);
+  }
+  elseif (drupal_substr($form_id, 0, 19) == 'webform_client_form') {
+    // Any piece of content with a webform
+    array_unshift($form['#validate'], 'webform_dynamic_recipients_validate');
+  }
+
+}
+
+/**
+ * Validation handler for "webform" content type forms. Dynamically sets the recipient email(s)
+ */
+function webform_dynamic_recipients_validate(&$form, &$form_state) {
+
+  $nid = $form['#node']->nid;
+
+  // Get the dynamic recipients for all components on this form
+  $existing_dynamic_recipients = db_select('webform_dynamic_recipients', 'r')->fields('r', array('cid', 'recipients'))->condition('nid', $nid, '=')->execute();
+
+  // Look through components with dynamic recipients...
+  foreach ($existing_dynamic_recipients as $component) {
+
+    // All the components on the webform
+    $submitted_components = $form['#node']->webform['components'];
+
+    // Get the value of the webform component corresponding to the one we're looking at
+    $form_component = $form['#node']->webform['components'][$component->cid];
+    $component_value = trim(webform_dynamic_recipients_get_value($form_component['form_key'], $form_state['values']['submitted']));
+
+    if (!empty($component_value)) {
+
+      // Marshall the list of values & recipients into an array we can work with more easily
+      $recipients = array();
+      $recipient_settings = explode("\n", $component->recipients);
+      foreach ($recipient_settings as $recipient_setting) {
+        $recipient_setting = explode('|', $recipient_setting);
+        $recipients[$recipient_setting[0]] = trim(str_replace("\n", "", $recipient_setting[1]));
+      }
+
+      // Get the email address corresponding to the component's value
+      $chosen_recipient = $recipients[$component_value];
+
+      if (!empty($chosen_recipient)) {
+
+        // Loop through the emails configured for this webform. If one is set up for this
+        // component, override the email address with the appropriate recipient.
+        foreach ($form['#node']->webform['emails'] as $email_index => $email_settings) {
+          if ($email_settings['email'] == $form_component['form_key'] . '@dynamic.recipient') {
+            $form['#node']->webform['emails'][$email_index]['email'] = $chosen_recipient;
+          }
+        }
+
+      }
+    }
+
+  }
+
+}
+
+/**
+ * Recursively search an array of webform component keys
+ *
+ * @param string $field_name
+ *   A string containing the key to search for
+ * @param array $submitted_components
+ *   $form['#node']->webform['components']
+ *
+ * @return string
+ *   Returns the value corresponding to $field_name, or NULL if not found
+ */
+function webform_dynamic_recipients_get_value($field_name, array $submitted_components) {
+  foreach ($submitted_components as $key => $value) {
+
+    if (is_array($value)) {
+      $component_value = webform_dynamic_recipients_get_value($field_name, $value);
+      if ($component_value !== NULL) {
+        return $component_value;
+      }
+    }
+    else {
+      if ($key == $field_name) {
+        return $value;
+      }
+    }
+
+  }
+
+  return NULL;
+
+}

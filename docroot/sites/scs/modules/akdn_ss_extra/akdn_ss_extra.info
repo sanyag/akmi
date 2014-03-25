@@ -1,0 +1,11 @@
+name = Syndication Server - AKDN Extras
+description = Extra features for the the use of the Syndication Server on the AKDN site.
+package = Syndication
+version = "7.x-1.0"
+core = 7.x
+dependencies[] = "services"
+dependencies[] = "ctools"
+dependencies[] = "syndication_server"
+dependencies[] = "syndication_server_client_access"
+files[] = akdn_ss_extra.module
+

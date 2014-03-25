@@ -1,0 +1,32 @@
+<?php
+
+/**
+ * Implements hook_wm_item().
+ */
+function wm_configuration_wm_item() {
+  $images = drupal_get_path('module', 'wm_configuration') . '/images/';
+
+  $items['configuration'] = array(
+      '#title' => 'Configuration',
+      '#class' => array(),
+      '#weigth' => 2,
+      '#items' => array(
+          'information' => array(
+              'icon' => $images . 'information-white.png',
+              'title' => t('Site information'),
+              'href' => 'admin/config/system/site-information',
+              'help' => t('Site information'),
+            //'notification_callback' => '',
+          ),
+          'performance' => array(
+              'icon' => $images . 'dashboard.png',
+              'title' => t('Performance'),
+              'href' => 'admin/config/development/performance',
+              'help' => t('Boost your site\'s speed'),
+            //'notification_callback' => '',
+          ),
+      ),
+  );
+
+  return $items;
+}

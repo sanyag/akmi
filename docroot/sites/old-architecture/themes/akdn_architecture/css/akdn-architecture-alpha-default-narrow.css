@@ -1,0 +1,238 @@
+/***********************************************************************
+ *                                MIXINS                               *
+ ***********************************************************************/
+.inline-block {
+  display: -moz-inline-box;
+  display: inline-block;
+  *display: inline;
+  zoom: 1;
+}
+.italic {
+  font-style: italic;
+}
+.bold {
+  font-weight: bold;
+}
+.hover-underline {
+  text-decoration: none;
+}
+.hover-underline:hover {
+  text-decoration: underline;
+}
+.no_mp {
+  margin: 0;
+  padding: 0;
+}
+.no_bullets {
+  list-style: none;
+  list-style-image: none;
+}
+.inline-block {
+  display: -moz-inline-stack;
+  display: inline-block;
+  vertical-align: top;
+  zoom: 1;
+  *display: inline;
+}
+/*Transformations*/
+/**
+ * This mixin will make the HTML list view format's <li>'s float left as inline.
+ */
+.views_html_list_float_left .view-content > .item-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  list-style-image: none;
+}
+.views_html_list_float_left .view-content > .item-list ul li {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  list-style-image: none;
+  float: left;
+  margin-right: 5px;
+}
+/***********************************************************************
+ *                              END MIXINS                             *
+ ***********************************************************************/
+#zone-user #region-user-first {
+  float: right;
+  margin-left: 0;
+  text-align: right;
+  margin-right: 15px;
+}
+#zone-user #region-user-first div.region-user-first-inner div#block-search-form {
+  width: auto;
+  float: none;
+  margin: 5px 0;
+}
+#zone-user #region-user-first div.region-user-first-inner div#block-search-form .container-inline {
+  border: none;
+}
+#zone-user #region-user-first div.region-user-first-inner div#block-search-form .container-inline .form-item-search-block-form input {
+  width: 100px;
+}
+#zone-user #region-user-first div.region-user-first-inner div#block-search-form .container-inline .form-actions {
+  margin: 0;
+}
+#zone-user #region-user-first .mobile-menu-link-wrapper {
+  display: none;
+}
+#zone-user #region-user-first #block-block-16 {
+  display: none;
+}
+#zone-user #region-user-first #block-block-6 {
+  width: 100%;
+  padding-top: 6px;
+}
+#zone-user #region-user-first #block-block-6 input.go {
+  top: 9px;
+}
+#zone-user #region-menu #block-block-7 {
+  margin: 0;
+  display: -moz-inline-box;
+  display: -moz-inline-stack;
+  display: inline-block;
+  zoom: 1;
+  *display: inline;
+  vertical-align: top;
+}
+#zone-user #region-menu #block-block-7 img {
+  width: 75px;
+  padding-right: 5px;
+}
+#zone-user #region-menu #block-menu-block-1 {
+  overflow: visible;
+  padding: 6px 0;
+  height: auto;
+  display: -moz-inline-box;
+  display: -moz-inline-stack;
+  display: inline-block;
+  zoom: 1;
+  *display: inline;
+  vertical-align: top;
+  width: auto;
+}
+#zone-user #region-menu #block-menu-block-1 ul.menu li {
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-right: 1px solid #808285;
+  display: -moz-inline-box;
+  display: -moz-inline-stack;
+  display: inline-block;
+  vertical-align: top;
+  zoom: 1;
+  *display: inline;
+  background: #fff;
+}
+#zone-user #region-menu #block-menu-block-1 ul.menu li.last {
+  border-bottom: none;
+  border-right: none;
+  padding-right: 0;
+}
+#zone-user #region-menu #block-menu-block-1 ul.menu li.first {
+  padding-left: 0;
+}
+#zone-user #region-menu #block-menu-block-1 ul.menu li a,
+#zone-user #region-menu #block-menu-block-1 ul.menu li a:link,
+#zone-user #region-menu #block-menu-block-1 ul.menu li a:visited {
+  display: block;
+  text-decoration: none;
+  margin: 0 auto;
+  padding: 2px 6px 2px 2px;
+}
+#zone-content #region-sidebar-second h2 {
+  font-size: 14px;
+}
+#zone-footer #region-footer-first h2.pane-title,
+#zone-footer #region-footer-second h2.pane-title {
+  font-size: 14px;
+}
+#mini-panel-bottom,
+#mini-panel-footer {
+  margin-left: 0px;
+}
+#mini-panel-bottom .panel-panel.grid-8 .pane-block,
+#mini-panel-footer .panel-panel.grid-8 .pane-block {
+  /*h2.pane-title{
+        padding-bottom: 69px;
+        background-repeat: no-repeat;
+        background-position: bottom left;
+      }
+      &.current-cycle{
+        h2.pane-title{
+          background-image: url(../images/topic1_med.jpg);
+        }
+      }
+      &.past-cycles{
+        h2.pane-title{
+          background-image: url(../images/topic2_med.jpg);
+        }
+      }
+      &.news-resource{
+        h2.pane-title{
+          background-image: url(../images/topic3_med.jpg);
+        }
+      }*/
+
+}
+#mini-panel-footer .panel-pane,
+#mini-panel-footer .panel-views {
+  margin: 0 0 20px 0;
+  width: 240px;
+}
+#mini-panel-footer .pane-block-3 .pane-content {
+  padding-left: 10px;
+}
+#mini-panel-footer .pane-block-1 h2.pane-title {
+  border-left: 1px solid #d9caac;
+}
+.grid-6.region-sidebar-second .box-lightbrown {
+  width: 140px;
+}
+.field-name-field-press-kit .field-items {
+  width: 210px;
+}
+.field-name-field-press-kit:after {
+  clear: none;
+}
+/*************************************************************************
+ *                          Pages & Blocks                               *
+ *************************************************************************/
+#block-menu-block-2 {
+  font-size: 12px;
+}
+.block-cycle-resources ul li {
+  padding: 0;
+}
+.block-cycle-resources ul li a {
+  font-size: 12px;
+  padding: 0;
+}
+/*************************************************************************
+ *                               Views                                   *
+ *************************************************************************/
+.view-id-featured_slideshow .slide-text {
+  height: 100px;
+}
+.view-id-featured_slideshow .flex-control-nav {
+  display: block;
+  width: auto;
+  top: 179px;
+  right: 0;
+}
+.view-id-featured_slideshow .flex-control-nav li {
+  width: 21px;
+  overflow: hidden;
+}
+.view-id-featured_slideshow .flex-control-nav li a {
+  text-indent: 0;
+  background: #e8dfcd;
+  cursor: pointer;
+  padding: 2px 4px 6px;
+}
+.view-id-featured_slideshow .flex-control-nav li a.active {
+  background-position: 0 0;
+  background: #f2edde;
+}

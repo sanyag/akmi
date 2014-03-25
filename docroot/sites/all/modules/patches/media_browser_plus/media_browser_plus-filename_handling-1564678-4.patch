@@ -1,0 +1,13 @@
+diff --git a/media_browser_plus.module b/media_browser_plus.module
+index bdf7254..d14823e 100644
+--- a/media_browser_plus.module
++++ b/media_browser_plus.module
+@@ -2040,7 +2040,6 @@ function media_browser_plus_move_file($tid, $media, $replace = FILE_EXISTS_RENAM
+     $folder = media_browser_plus_folder_load($tid);
+     $path = media_browser_plus_construct_dir_path($folder);
+     file_prepare_directory($path, FILE_CREATE_DIRECTORY);
+-    $destination = $path . '/' . $media->filename;
+-    file_move($media, $destination, $replace);
++    file_move($media, $path, $replace);
+   }
+ }

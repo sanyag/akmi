@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the AK Page feature.
+ */
+
+include_once('ak_page.features.inc');

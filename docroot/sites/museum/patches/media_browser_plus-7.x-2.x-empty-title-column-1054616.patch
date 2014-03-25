@@ -1,0 +1,22 @@
+diff --git a/includes/file_entity.admin.inc b/includes/file_entity.admin.inc
+index 0732bd0..7840c0a 100644
+--- a/includes/file_entity.admin.inc
++++ b/includes/file_entity.admin.inc
+@@ -192,8 +192,16 @@ function _media_browser_plus_media_admin_list_alter(&$form, &$form_state) {
+         $media_user = $user;
+       }
+ 
++      //Support 7.x-1.x versions of Media module
++      if (function_exists('theme_media_link')) {
++        $title_callback = 'media_link';
++      }
++      else {
++        $title_callback = 'file_entity_file_link';
++      }
++
+       $options[$media->fid] = array(
+-        'title' => theme('media_link', array('file' => $media)),
++        'title' => theme($title_callback, array('file' => $media)),
+         'folder' => $folder,
+         'type' => check_plain($media->filemime),
+         'size' => format_size($media->filesize),

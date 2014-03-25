@@ -1,0 +1,6 @@
+name = Media Upload Fields
+description = Simple module which injects file entity fields into the Media upload form on node form widgets
+package = Media
+core = 7.x
+
+dependencies[] = media

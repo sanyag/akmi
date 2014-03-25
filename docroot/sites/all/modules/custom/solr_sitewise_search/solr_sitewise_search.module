@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the solr sitewise search feature.
+ */
+
+include_once 'solr_sitewise_search.features.inc';

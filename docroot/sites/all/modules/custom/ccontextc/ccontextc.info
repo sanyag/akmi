@@ -1,0 +1,6 @@
+name = Custom Context Condition for Project Slider
+description = "Make a custom context condition for enable_project_slider field"
+package = Build a Module
+core = 7.x
+files[] = ccontextc.module
+files[] = ccontextc_context_condition_enable_project_slider.inc

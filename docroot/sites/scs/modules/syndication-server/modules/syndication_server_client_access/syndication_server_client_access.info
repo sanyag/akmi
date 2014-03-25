@@ -1,0 +1,14 @@
+name = Syndication Server Client Access
+description = Syndication Server Client Access
+package = Syndication
+version = "7.x-1.0"
+core = 7.x
+dependencies[] = "services"
+dependencies[] = "ctools"
+dependencies[] = "syndication_server"
+files[] = syndication_server_client_access.module
+files[] = syndication_server_client_access.install
+
+
+
+

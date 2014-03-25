@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the AK Event feature.
+ */
+
+include_once('ak_event.features.inc');

@@ -1,0 +1,2467 @@
+
+<?php
+ 
+// GLOBAL VARS ///////////////////////////////////////////////////////
+$db; // mssql connect container
+$logfile; // error log file
+include_once('simple_html_dom.php');
+// ////////////////////////////////////////////////////////////////////
+ 
+ 
+ 
+ 
+/**
+ * configure PHP environment
+ * 
+ **/
+
+function configure_environment($args = array()) {
+  global $db;
+  global $logfile;
+  // This is needed to get the correct dates on nodes
+  // should be Europe/Paris or dates will be parsed wrong
+  date_default_timezone_set(variable_get('date_default_timezone','Europe/Paris')); 
+
+  // Connect and set the global DB variable
+  $db = connect_to_server($args);
+
+  $logfile = fopen("error_import_log.txt", "w");
+  // MSSQL and print it.
+  // $version = sqlsrv_query($db, 'SELECT * FROM BLOG');
+  // $row = sqlsrv_fetch_array($version);
+
+  // var_dump($row);
+
+  // // Clean up
+  //  sqlsrv_free_stmt($version);
+
+}
+
+
+/**
+ * Connects to the MSSQL VBOX server
+ * @param - $args
+ *    An array of arguments from the command line
+ * @return - mssql connection
+ **/
+
+function connect_to_server($args) {
+  
+  error_reporting(E_ALL);
+  
+  /*mssql*/
+  //$server_from="MAC\MSSQLSERVER";
+  $username_from="sa";
+  $password_from="root";
+  
+  /*sqlsrv*/
+  $server_name = "MAC";
+  $database_from = "AKDN2";
+  $connection_info = array(
+    "Database" => $database_from,
+    "UID" => $username_from,
+    "PWD" => $password_from,
+    "CharacterSet" => "UTF-8",
+  );
+  
+  //FROM Connect to MSSQL
+  //$link_from = mssql_connect($server_from, $username_from, $password_from);
+  //$er = mssql_get_last_message();
+  //if($er) { print $er; }
+  //mssql_select_db('AKDN2');
+  
+  //FROM Connect to SQLSRV
+  $link_from = sqlsrv_connect($server_name, $connection_info);
+  $er = sqlsrv_errors();
+  //if ($er) { print_r($er); }
+
+  // Do a simple query, select the version of 
+  // MSSQL and print it.
+  // $version = sqlsrv_query('SELECT * FROM BLOG');
+  // $row = sqlsrv_fetch_array($version);
+
+  //  var_dump($row);
+
+  // Clean up
+  // mssql_free_stmt($version);
+  // 
+  // var_dump($link_from);
+  // var_dump($er);
+
+  return $link_from;
+}
+
+
+
+/**
+ * Migrate all content types
+ * A batch call for the command line
+ * 
+ **/
+
+function content_migrate_all($args = array()) {
+  content_migrate_speech();
+  drush_log("finished speeches...", "warning");
+  content_migrate_general_news();
+  drush_log("finished news...", "warning");
+  content_migrate_press_releases();
+  drush_log("finished press releases...", "warning");
+  content_migrate_inthemedias();
+  drush_log("finished in the media...", "warning");
+  content_migrate_blogs();
+  drush_log("finished blogs...", "warning");
+  content_migrate_spotlights();
+  drush_log("finished spotlights...", "warning");
+  content_migrate_publications();
+  drush_log("finished publications...", "warning");
+  content_migrate_galleries();
+  drush_log("finished galleries...", "warning");
+  content_migrate_podcasts();
+  drush_log("finished podcasts...", "warning");
+  //  content_migrate_videos();
+  //  content_migrate_agencies();
+}
+
+/**
+ * Migrate content from the mssql db into the new Speech content type
+ * @param - $args
+ *    Array | an array of command line arguments
+ * 
+ **/
+
+function content_migrate_speech($args = array()) {
+  global $logfile;
+  $results = _get_content_from_contentItem_table(3); // 3 is the id for the speech content type
+  
+  // Loop through the results
+  foreach($results as $key => $lang_array) {
+  
+    // $tnid = 0;  
+    $node = _generate_dummy_node_fields("speech"); // by default languages are english
+  
+    foreach($lang_array as $langID => $o) {
+            
+      $lang = _get_drupal_lang_value_from_lang_id($langID);
+      //$node = _generate_dummy_node_fields("speech", $lang);
+      
+      // Translation settings
+      if(!isset($node->language)) {
+        $node->language = $lang;
+        $node->translations->original = $lang;
+        $node->translations = new stdClass();
+        $node->translations->data = array();
+      }
+
+      $added = $o->DateAdded;
+      $updated = $o->DateUpdated;
+      $written = rtrim($o->DateWritten);
+      $written = explode("/", $written);
+      $written = $written[1] . "/" . $written[0] . "/" . $written[2];
+
+      // Original Language Setting
+      $node->translations->original = $node->language;
+      
+      $node->translations->data[$lang] = array(
+        'entity_type' => 'node',
+        'entity_id' => isset($node->nid) ? $node->nid : 0,
+        'language' => $lang,
+        'source' => isset($node->nid) ? $node->language : '',
+        'uid' => 1,
+        'status' => 1,
+        'translate' => 0,
+        'created' => $added->getTimestamp(),
+        'changed' => $updated->getTimestamp(),
+      );
+
+      //$node->tnid = $tnid; // set the translation nid
+      if(!$node->created) { $node->created = $added->getTimestamp(); }
+      if(!$node->changed){ $node->changed = $updated->getTimestamp(); }
+      if(!$node->title) { $node->title = trim(_content_migrate_rawtext_fixes($o->ContentHeading)); }
+      
+      
+      // Translateable title field
+      $node->title_field[$lang][0] = array(
+        'value' => trim(_content_migrate_rawtext_fixes($o->ContentHeading)),
+        'format' => 'full_html',
+        'safe_value' => trim(check_plain(_content_migrate_rawtext_fixes($o->ContentHeading))),
+      );
+
+      $node->body[$lang][0]['summary'] = _content_migrate_rawtext_fixes($o->ContentSummary);
+      //$node->body[$lang][0]['safe_summary'] = check_plain(_content_migrate_rawtext_fixes($o->ContentSummary));
+      $node->body[$lang][0]['value'] = _content_migrate_rawtext_fixes($o->ContentText);
+      //$node->body[$lang][0]['safe_value'] = check_plain(_content_migrate_rawtext_fixes($o->ContentText));
+      $node->body[$lang][0]['format'] = 'full_html';      
+      
+
+  // ----------------------------------------------------------------------------------------------------------------------------
+      
+      /*$pubDate = array();
+      if(strtotime($written)) {
+        $pubDate = array(
+          'value' => strtotime($written),
+          'timezone' => variable_get('date_default_timezone','Europe/Paris'),
+          'timezone_db' => 'UTC',
+          'date_type' => 'datestamp',
+        );
+      }
+      
+      // Common?
+      $node->field_publish_date[$lang][] = $pubDate;*/
+
+      $publish_date = $o->DatePublished;
+      $pubDate = array(
+        'value' => $publish_date->getTimestamp(),
+        'timezone' => variable_get('date_default_timezone','Europe/Paris'),
+        'timezone_db' => 'UTC',
+        'date_type' => 'datestamp',
+      );
+
+      
+      // Common?
+      $node->field_publish_date[$lang][] = $pubDate;
+
+
+      $node->field_tags = array();
+      $tag_names = _get_old_tag_names($o->ContentID);
+      $term_objs = array();
+      foreach ($tag_names as $key => $tag) {
+        $term_objs[] = _get_create_translated_term($lang, 'tags', $tag);
+      }
+      foreach ($term_objs as $term) {
+        $node->field_tags[$lang][]['tid'] = $term->tid;
+      }
+
+  // ----------------------------------------------------------------------------------------------------------------------------
+
+
+      // ADDTL Fields
+      $node->field_speech_image = array();
+      $node->field_speech_location = array();
+      $node->field_speech_speaker = array();
+
+
+  // ----------------------------------------------------------------------------------------------------------------------------
+
+      // ON FIRST PASS SAVE THE NODE FOR THE REMAINING TRANSLATIONS
+      if(!isset($node->nid)) { node_save($node); }
+      if ($img_err) {
+        fwrite($logfile, "Error on node $node->nid (speech): Image not found: MediaID $o->MediaID \r\n");
+      }
+    }
+    
+    
+    // Node save moved out to here in order to handle field translations instead of node based translations
+    // Also a couple of small fixes
+    if(!$node->title) { $node->title = "UNTITLED"; }
+    node_save($node);
+    
+  }
+    
+}
+
+
+/**
+ * Migrate content from the mssql db into the new Article content type from the old general news
+ * @param - $args
+ *    Array | an array of command line arguments
+ * 
+ **/
+
+function content_migrate_general_news($args = array()) {
+  global $logfile;
+  $results = _get_content_from_contentItem_table(4); // 4 is the id for the General news type
+  
+  // Loop through the results
+  foreach($results as $key => $lang_array) {
+  
+    // $tnid = 0;  
+    $node = _generate_dummy_node_fields("article"); // by default languages are english
+  
+    foreach($lang_array as $langID => $o) {
+            
+      $lang = _get_drupal_lang_value_from_lang_id($langID);
+      //$node = _generate_dummy_node_fields("speech", $lang);
+      
+      // Translation settings
+      if(!isset($node->language)) {
+        $node->language = $lang;
+        $node->translations->original = $lang;
+        $node->translations = new stdClass();
+        $node->translations->data = array();
+      }
+
+      $added = $o->DateAdded;
+      $updated = $o->DateUpdated;
+      $written = rtrim($o->DateWritten);
+      $written = explode("/", $written);
+      $written = $written[1] . "/" . $written[0] . "/" . $written[2];
+      
+      // Original Language Setting
+      $node->translations->original = $node->language;
+      
+      $node->translations->data[$lang] = array(
+        'entity_type' => 'node',
+        'entity_id' => isset($node->nid) ? $node->nid : 0,
+        'language' => $lang,
+        'source' => isset($node->nid) ? $node->language : '',
+        'uid' => 1,
+        'status' => 1,
+        'translate' => 0,
+        'created' => $added->getTimestamp(),
+        'changed' => $updated->getTimestamp(),
+      );
+
+      //$node->tnid = $tnid; // set the translation nid
+      if(!$node->created) { $node->created = $added->getTimestamp(); }
+      if(!$node->changed){ $node->changed = $updated->getTimestamp(); }
+      if(!$node->title) { $node->title = trim(_content_migrate_rawtext_fixes($o->ContentHeading)); }
+      
+      
+      // Translateable title field
+      $node->title_field[$lang][0] = array(
+        'value' => trim(_content_migrate_rawtext_fixes($o->ContentHeading)),
+        'format' => 'full_html',
+        'safe_value' => trim(check_plain(_content_migrate_rawtext_fixes($o->ContentHeading))),
+      );
+
+      $node->body[$lang][0]['summary'] = _content_migrate_rawtext_fixes($o->ContentSummary);
+      //$node->body[$lang][0]['safe_summary'] = check_plain(_content_migrate_rawtext_fixes($o->ContentSummary));
+      $node->body[$lang][0]['value'] = _content_migrate_rawtext_fixes($o->ContentText);
+      //$node->body[$lang][0]['safe_value'] = check_plain(_content_migrate_rawtext_fixes($o->ContentText));
+      $node->body[$lang][0]['format'] = 'full_html';      
+      
+
+  // ----------------------------------------------------------------------------------------------------------------------------
+      
+      /*$pubDate = array();
+      if(strtotime($written)) {
+        $pubDate = array(
+          'value' => strtotime($written),
+          'timezone' => variable_get('date_default_timezone','Europe/Paris'),
+          'timezone_db' => 'UTC',
+          'date_type' => 'datestamp',
+        );
+      }
+      
+      // Common?
+      $node->field_publish_date[$lang][] = $pubDate;*/
+
+      $publish_date = $o->DatePublished;
+      $pubDate = array(
+        'value' => $publish_date->getTimestamp(),
+        'timezone' => variable_get('date_default_timezone','Europe/Paris'),
+        'timezone_db' => 'UTC',
+        'date_type' => 'datestamp',
+      );
+
+      
+      // Common?
+      $node->field_publish_date[$lang][] = $pubDate;
+
+
+      $node->field_tags = array();
+      $tag_names = _get_old_tag_names($o->ContentID);
+      $term_objs = array();
+      foreach ($tag_names as $key => $tag) {
+        $term_objs[] = _get_create_translated_term($lang, 'tags', $tag);
+      }
+      foreach ($term_objs as $term) {
+        $node->field_tags[$lang][]['tid'] = $term->tid;
+      }
+
+  // ----------------------------------------------------------------------------------------------------------------------------
+
+
+      // ADDTL Fields
+      $node->field_article_cat[$lang][0]['tid'] = '2';
+      $node->field_article_author = array();
+      $node->field_article_link = array();
+      $node->field_article_project = array();
+      $node->field_article_img = array();
+
+      $img_err = FALSE;
+      if(!empty($o->MediaID)) {
+        $img_file = _get_referenced_media_file($o->MediaID, $lang);
+          //var_dump($img_file);
+        if ($img_file) {
+          $img_file = array_merge((array)$img_file, array('display' => 1));
+          $node->field_article_img[$lang][] = (array)$img_file;
+        }
+        else {
+          $img_err = TRUE;
+        }
+      }     
+      
+ // ----------------------------------------------------------------------------------------------------------------------------
+
+      // ON FIRST PASS SAVE THE NODE FOR THE REMAINING TRANSLATIONS
+      if(!isset($node->nid)) { node_save($node); }
+      if ($img_err) {
+        fwrite($logfile, "Error on node $node->nid (News): Image not found: MediaID $o->MediaID \r\n");
+      }
+    }
+
+
+    // Node save moved out to here in order to handle field translations instead of node based translations
+    // Also a couple of small fixes
+    if(!$node->title) { $node->title = "UNTITLED"; }
+    node_save($node);
+
+  }
+
+}
+
+
+/**
+ * Migrate content from the mssql db into the new Article content type from the old press release
+ * @param - $args
+ *    Array | an array of command line arguments
+ * 
+ **/ 
+
+function content_migrate_press_releases() {
+  global $logfile;
+
+  $results = _get_content_from_contentItem_table(2); // 2 is the content id 
+  // Loop through the results
+  $num = count($results);
+  $progress = 0;
+  foreach($results as $key => $lang_array) {
+  
+    // $tnid = 0;  
+    $node = _generate_dummy_node_fields("article"); // by default languages are english
+
+
+
+    foreach($lang_array as $langID => $o) {
+            
+      $lang = _get_drupal_lang_value_from_lang_id($langID);
+      //$node = _generate_dummy_node_fields("speech", $lang);
+      // Translation settings
+      if(!isset($node->language)) {
+        $node->language = $lang;
+        $node->translations->original = $lang;
+        $node->translations = new stdClass();
+        $node->translations->data = array();
+      }
+
+      $added = $o->DateAdded;
+      $updated = $o->DateUpdated;
+      $written = rtrim($o->DateWritten);
+      $written = explode("/", $written);
+      $written = $written[1] . "/" . $written[0] . "/" . $written[2];
+
+      // Original Language Setting
+      $node->translations->original = $node->language;
+      
+      $node->translations->data[$lang] = array(
+        'entity_type' => 'node',
+        'entity_id' => isset($node->nid) ? $node->nid : 0,
+        'language' => $lang,
+        'source' => isset($node->nid) ? $node->language : '',
+        'uid' => 1,
+        'status' => 1,
+        'translate' => 0,
+        'created' => $added->getTimestamp(),
+        'changed' => $updated->getTimestamp(),
+      );
+
+      //$node->tnid = $tnid; // set the translation nid
+      if(!$node->created) { $node->created = $added->getTimestamp(); }
+      if(!$node->changed){ $node->changed = $updated->getTimestamp(); }
+      if(!$node->title) { $node->title = trim(_content_migrate_rawtext_fixes($o->ContentHeading)); }
+      
+      
+      // Translateable title field
+      $node->title_field[$lang][0] = array(
+        'value' => trim(_content_migrate_rawtext_fixes($o->ContentHeading)),
+        'format' => 'full_html',
+        'safe_value' => trim(check_plain(_content_migrate_rawtext_fixes($o->ContentHeading))),
+      );
+
+      $node->body[$lang][0]['summary'] = _content_migrate_rawtext_fixes($o->ContentSummary);
+      //$node->body[$lang][0]['safe_summary'] = check_plain(_content_migrate_rawtext_fixes($o->ContentSummary));
+      $node->body[$lang][0]['value'] = _content_migrate_rawtext_fixes($o->ContentText);
+      //$node->body[$lang][0]['safe_value'] = check_plain(_content_migrate_rawtext_fixes($o->ContentText));
+      $node->body[$lang][0]['format'] = 'full_html';
+
+
+
+      // ----------------------------------------------------------------------------------------------------------------------------
+      
+      /*$pubDate = array();
+      if(strtotime($written)) {
+        $pubDate = array(
+          'value' => strtotime($written),
+          'timezone' => variable_get('date_default_timezone','Europe/Paris'),
+          'timezone_db' => 'UTC',
+          'date_type' => 'datestamp',
+        );
+      }
+
+      
+      // Common?
+      $node->field_publish_date[$lang][] = $pubDate;*/
+
+      $publish_date = $o->DatePublished;
+      $pubDate = array(
+        'value' => $publish_date->getTimestamp(),
+        'timezone' => variable_get('date_default_timezone','Europe/Paris'),
+        'timezone_db' => 'UTC',
+        'date_type' => 'datestamp',
+      );
+
+      
+      // Common?
+      $node->field_publish_date[$lang][] = $pubDate;
+
+
+      $node->field_tags = array();
+      $tag_names = _get_old_tag_names($o->ContentID);
+      $term_objs = array();
+      foreach ($tag_names as $key => $tag) {
+        $term_objs[] = _get_create_translated_term($lang, 'tags', $tag);
+      }
+      foreach ($term_objs as $term) {
+        $node->field_tags[$lang][]['tid'] = $term->tid;
+      }
+
+      // ----------------------------------------------------------------------------------------------------------------------------
+
+
+      // ADDTL Fields
+      $node->field_article_cat[$lang][0]['tid'] = '4';
+      $node->field_article_author = array();
+      $node->field_article_link = array();
+      $node->field_article_project = array();
+      $node->field_article_img = array();
+
+      $img_err = FALSE;
+      if(!empty($o->MediaID)) {
+        $img_file = _get_referenced_media_file($o->MediaID, $lang);
+        if ($img_file) {
+          $img_file = array_merge((array)$img_file, array('display' => 1));
+          $node->field_article_img[$lang][] = (array)$img_file;
+        }
+        else {
+          $img_err = TRUE;
+        }
+      }
+      
+      // ----------------------------------------------------------------------------------------------------------------------------
+
+      // ON FIRST PASS SAVE THE NODE FOR THE REMAINING TRANSLATIONS
+      if(!isset($node->nid)) { node_save($node); } 
+      if ($img_err) {
+        fwrite($logfile, "Error on node $node->nid (Press Release): Image not found: MediaID $o->MediaID \r\n");
+      }
+    }
+
+    // Node save moved out to here in order to handle field translations instead of node based translations
+    // Also a couple of small fixes
+    //drush_log("made it this far; title " . $node->title, "error");
+    if(!$node->title) { $node->title = "UNTITLED"; }
+    node_save($node);
+    $progress++;
+    echo "saved node " . $progress . " of " . $num . "\n";
+    //foreach($orig_id_array as $lang => $x) {
+      //_content_migrate_create_redirect('Content/' . $x, $node->nid, $lang);
+    //}
+  }
+
+}
+
+
+/**
+ * Migrate content from the mssql db into the new Article content type from the old in the media
+ * @param - $args
+ *    Array | an array of command line arguments
+ * 
+ **/
+
+function content_migrate_inthemedias() {
+  global $logfile;
+
+  $results = _get_content_from_contentItem_table(9); // 2 is the content id 
+
+  // Loop through the results
+  foreach($results as $key => $lang_array) {
+
+    // $tnid = 0;  
+    $node = _generate_dummy_node_fields("article"); // by default languages are english
+
+    foreach($lang_array as $langID => $o) {
+
+      $lang = _get_drupal_lang_value_from_lang_id($langID);
+      //$node = _generate_dummy_node_fields("speech", $lang);
+
+      // Translation settings
+      if(!isset($node->language)) {
+        $node->language = $lang;
+        $node->translations->original = $lang;
+        $node->translations = new stdClass();
+        $node->translations->data = array();
+      }
+
+      $added = $o->DateAdded;
+      $updated = $o->DateUpdated;
+      $written = rtrim($o->DateWritten);
+      $written = explode("/", $written);
+      $written = $written[1] . "/" . $written[0] . "/" . $written[2];
+
+      // Original Language Setting
+      $node->translations->original = $node->language;
+
+      $node->translations->data[$lang] = array(
+        'entity_type' => 'node',
+        'entity_id' => isset($node->nid) ? $node->nid : 0,
+        'language' => $lang,
+        'source' => isset($node->nid) ? $node->language : '',
+        'uid' => 1,
+        'status' => 1,
+        'translate' => 0,
+        'created' => $added->getTimestamp(),
+        'changed' => $updated->getTimestamp(),
+      );
+
+      //$node->tnid = $tnid; // set the translation nid
+      if(!$node->created) { $node->created = $added->getTimestamp(); }
+      if(!$node->changed){ $node->changed = $updated->getTimestamp(); }
+      if(!$node->title) { $node->title = trim(_content_migrate_rawtext_fixes($o->ContentHeading)); }
+
+      // Translateable title field
+      $node->title_field[$lang][0] = array(
+        'value' => trim(_content_migrate_rawtext_fixes($o->ContentHeading)),
+        'format' => 'full_html',
+        'safe_value' => trim(check_plain(_content_migrate_rawtext_fixes($o->ContentHeading))),
+      );
+
+      $node->body[$lang][0]['summary'] = _content_migrate_rawtext_fixes($o->ContentSummary);
+      //$node->body[$lang][0]['safe_summary'] = check_plain(_content_migrate_rawtext_fixes($o->ContentSummary));
+      $node->body[$lang][0]['value'] = _content_migrate_rawtext_fixes($o->ContentText);
+      //$node->body[$lang][0]['safe_value'] = check_plain(_content_migrate_rawtext_fixes($o->ContentText));
+      $node->body[$lang][0]['format'] = 'full_html';      
+
+
+  // ----------------------------------------------------------------------------------------------------------------------------
+
+      /*$pubDate = array();
+      if(strtotime($written)) {
+        $pubDate = array(
+          'value' => strtotime($written),
+          'timezone' => variable_get('date_default_timezone','Europe/Paris'),
+          'timezone_db' => 'UTC',
+          'date_type' => 'datestamp',
+        );
+      }
+
+      // Common?
+      $node->field_publish_date[$lang][] = $pubDate;*/
+
+      $publish_date = $o->DatePublished;
+      $pubDate = array(
+        'value' => $publish_date->getTimestamp(),
+        'timezone' => variable_get('date_default_timezone','Europe/Paris'),
+        'timezone_db' => 'UTC',
+        'date_type' => 'datestamp',
+      );
+
+      
+      // Common?
+      $node->field_publish_date[$lang][] = $pubDate;
+
+
+      $node->field_tags = array();
+      $tag_names = _get_old_tag_names($o->ContentID);
+      $term_objs = array();
+      foreach ($tag_names as $key => $tag) {
+        $term_objs[] = _get_create_translated_term($lang, 'tags', $tag);
+      }
+      foreach ($term_objs as $term) {
+        $node->field_tags[$lang][]['tid'] = $term->tid;
+      }
+
+  // ----------------------------------------------------------------------------------------------------------------------------
+
+
+      // ADDTL Fields
+      $node->field_article_cat[$lang][0]['tid'] = '2611';
+      $node->field_article_author = array();
+      $node->field_article_link = array();
+      if (!empty($o->StrFlag4) && valid_url(trim($o->StrFlag4), TRUE)) {      
+        $url = array(
+          'url' => trim($o->StrFlag4),
+          'attributes' => array(),
+          'title' => ''
+        );
+        if (!empty($o->StrFlag5)) {
+          $url['title'] = _content_migrate_rawtext_fixes($o->StrFlag5);
+        }
+        $node->field_article_link[$lang][] = $url;
+      }
+
+      $node->field_article_project = array();
+      $node->field_article_img = array();
+
+      $img_err = FALSE;
+      if(!empty($o->MediaID)) {
+        $img_file = _get_referenced_media_file($o->MediaID, $lang);
+          //var_dump($img_file);
+        if ($img_file) {
+          $img_file = array_merge((array)$img_file, array('display' => 1));
+          $node->field_article_img[$lang][] = (array)$img_file;
+        }
+        else {
+          $img_err = TRUE;
+        }
+      }
+
+ // ----------------------------------------------------------------------------------------------------------------------------
+
+      // ON FIRST PASS SAVE THE NODE FOR THE REMAINING TRANSLATIONS
+      if(!isset($node->nid)) { node_save($node); } 
+      if ($img_err) {
+        fwrite($logfile, "Error on node $node->nid (In The Media): Image not found: MediaID $o->MediaID \r\n");
+      }
+    }
+
+
+    // Node save moved out to here in order to handle field translations instead of node based translations
+    // Also a couple of small fixes
+    if(!$node->title) { $node->title = "UNTITLED"; }
+    node_save($node);
+
+  }
+
+}
+
+
+/**
+ * Migrate content from the mssql db into the new Article content type from the old blog
+ * @param - $args
+ *    Array | an array of command line arguments
+ * 
+ **/
+
+function content_migrate_blogs() {
+  global $logfile;
+  $results = _get_content_from_contentItem_table(5); // 5 is the blog content id 
+
+  // Loop through the results
+  foreach($results as $key => $lang_array) {
+
+    // $tnid = 0;  
+    $node = _generate_dummy_node_fields("article"); // by default languages are english
+
+    foreach($lang_array as $langID => $o) {
+
+      $lang = _get_drupal_lang_value_from_lang_id($langID);
+      //$node = _generate_dummy_node_fields("speech", $lang);
+
+      // Translation settings
+      if(!isset($node->language)) {
+        $node->language = $lang;
+        $node->translations->original = $lang;
+        $node->translations = new stdClass();
+        $node->translations->data = array();
+      }
+
+      $added = $o->DateAdded;
+      $updated = $o->DateUpdated;
+      $written = rtrim($o->DateWritten);
+      $written = explode("/", $written);
+      $written = $written[1] . "/" . $written[0] . "/" . $written[2];
+      // Original Language Setting
+      $node->translations->original = $node->language;
+      $node->translations->data[$lang] = array(
+        'entity_type' => 'node',
+        'entity_id' => isset($node->nid) ? $node->nid : 0,
+        'language' => $lang,
+        'source' => isset($node->nid) ? $node->language : '',
+        'uid' => 1,
+        'status' => 1,
+        'translate' => 0,
+        'created' => $added->getTimestamp(),
+        'changed' => $updated->getTimestamp(),
+      );
+
+      //$node->tnid = $tnid; // set the translation nid
+      if(!$node->created) { $node->created = $added->getTimestamp(); }
+      if(!$node->changed){ $node->changed = $updated->getTimestamp(); }
+      if(!$node->title) { $node->title = trim(_content_migrate_rawtext_fixes($o->ContentHeading)); }
+
+
+      // Translateable title field
+      $node->title_field[$lang][0] = array(
+        'value' => trim(_content_migrate_rawtext_fixes($o->ContentHeading)),
+        'format' => 'full_html',
+        'safe_value' => trim(check_plain(_content_migrate_rawtext_fixes($o->ContentHeading))),
+      );
+
+      $node->body[$lang][0]['summary'] = _content_migrate_rawtext_fixes($o->ContentSummary);
+      //$node->body[$lang][0]['safe_summary'] = check_plain(_content_migrate_rawtext_fixes($o->ContentSummary));
+      $node->body[$lang][0]['value'] = _content_migrate_rawtext_fixes($o->ContentText);
+      //$node->body[$lang][0]['safe_value'] = check_plain(_content_migrate_rawtext_fixes($o->ContentText));
+      $node->body[$lang][0]['format'] = 'full_html';      
+
+  // ----------------------------------------------------------------------------------------------------------------------------
+
+      /*$pubDate = array();
+      if(strtotime($written)) {
+        $pubDate = array(
+          'value' => strtotime($written),
+          'timezone' => variable_get('date_default_timezone','Europe/Paris'),
+          'timezone_db' => 'UTC',
+          'date_type' => 'datestamp',
+        );
+      }
+
+      // Common?
+      $node->field_publish_date[$lang][] = $pubDate;*/
+
+      $publish_date = $o->DatePublished;
+      $pubDate = array(
+        'value' => $publish_date->getTimestamp(),
+        'timezone' => variable_get('date_default_timezone','Europe/Paris'),
+        'timezone_db' => 'UTC',
+        'date_type' => 'datestamp',
+      );
+
+      
+      // Common?
+      $node->field_publish_date[$lang][] = $pubDate;
+
+
+      $node->field_tags = array();
+      $tag_names = _get_old_tag_names($o->ContentID);
+      $term_objs = array();
+      foreach ($tag_names as $key => $tag) {
+        $term_objs[] = _get_create_translated_term($lang, 'tags', $tag);
+      }
+      foreach ($term_objs as $term) {
+        $node->field_tags[$lang][]['tid'] = $term->tid;
+      }
+
+  // ----------------------------------------------------------------------------------------------------------------------------
+
+
+      // ADDTL Fields
+      $node->field_article_cat[$lang][0]['tid'] = '1';
+      $node->field_article_author = array();
+      $node->field_article_link = array();
+      $node->field_article_img = array();
+
+      $img_err = FALSE;
+      if(!empty($o->MediaID)) {
+        $img_file = _get_referenced_media_file($o->MediaID, $lang);
+          //var_dump($img_file);
+        if ($img_file) {
+          $img_file = array_merge((array)$img_file, array('display' => 1));
+          $node->field_article_img[$lang][] = (array)$img_file;
+        }
+        else {
+          $img_err = TRUE;
+        }
+      }
+
+      $node->field_article_project = array();
+
+
+ // ----------------------------------------------------------------------------------------------------------------------------
+
+      // ON FIRST PASS SAVE THE NODE FOR THE REMAINING TRANSLATIONS
+      if(!isset($node->nid)) { node_save($node); }
+      if ($img_err) {
+        fwrite($logfile, "Error on node $node->nid (Blog): Image not found: MediaID $o->MediaID \r\n");
+      }
+    }
+
+
+    // Node save moved out to here in order to handle field translations instead of node based translations
+    // Also a couple of small fixes
+    if(!$node->title) { $node->title = "UNTITLED"; }
+    node_save($node);
+
+  }
+
+}
+
+    
+
+/**
+ * Migrate content from the mssql db into the new Article content type from the old spotlight
+ * @param - $args
+ *    Array | an array of command line arguments
+ * 
+ **/
+
+function content_migrate_spotlights() {
+  global $logfile;
+  $results = _get_content_from_contentItem_table(7); // 7 is the spotlight content id 
+
+  // Loop through the results
+  foreach($results as $key => $lang_array) {
+  
+    // $tnid = 0;  
+    $node = _generate_dummy_node_fields("article"); // by default languages are english
+  
+    foreach($lang_array as $langID => $o) {
+            
+      $lang = _get_drupal_lang_value_from_lang_id($langID);
+      //$node = _generate_dummy_node_fields("speech", $lang);
+      
+      // Translation settings
+      if(!isset($node->language)) {
+        $node->language = $lang;
+        $node->translations->original = $lang;
+        $node->translations = new stdClass();
+        $node->translations->data = array();
+      }
+
+      $added = $o->DateAdded;
+      $updated = $o->DateUpdated;
+      $written = rtrim($o->DateWritten);
+      $written = explode("/", $written);
+      $written = $written[1] . "/" . $written[0] . "/" . $written[2];
+      
+      // Original Language Setting
+      $node->translations->original = $node->language;
+      
+      $node->translations->data[$lang] = array(
+        'entity_type' => 'node',
+        'entity_id' => isset($node->nid) ? $node->nid : 0,
+        'language' => $lang,
+        'source' => isset($node->nid) ? $node->language : '',
+        'uid' => 1,
+        'status' => 1,
+        'translate' => 0,
+        'created' => $added->getTimestamp(),
+        'changed' => $updated->getTimestamp(),
+      );
+
+      //$node->tnid = $tnid; // set the translation nid
+      if(!$node->created) { $node->created = $added->getTimestamp(); }
+      if(!$node->changed){ $node->changed = $updated->getTimestamp(); }
+      if(!$node->title) { $node->title = trim(_content_migrate_rawtext_fixes($o->ContentHeading)); }
+      
+      
+      // Translateable title field
+      $node->title_field[$lang][0] = array(
+        'value' => trim(_content_migrate_rawtext_fixes($o->ContentHeading)),
+        'format' => 'full_html',
+        'safe_value' => trim(check_plain(_content_migrate_rawtext_fixes($o->ContentHeading))),
+      );
+
+      $node->body[$lang][0]['summary'] = _content_migrate_rawtext_fixes($o->ContentSummary);
+      //$node->body[$lang][0]['safe_summary'] = check_plain(_content_migrate_rawtext_fixes($o->ContentSummary));
+      $node->body[$lang][0]['value'] = _content_migrate_rawtext_fixes($o->ContentText);
+      //$node->body[$lang][0]['safe_value'] = check_plain(_content_migrate_rawtext_fixes($o->ContentText));
+      $node->body[$lang][0]['format'] = 'full_html';
+      
+
+  // ----------------------------------------------------------------------------------------------------------------------------
+      
+      /*$pubDate = array();
+      if(strtotime($written)) {
+        $pubDate = array(
+          'value' => strtotime($written),
+          'timezone' => variable_get('date_default_timezone','Europe/Paris'),
+          'timezone_db' => 'UTC',
+          'date_type' => 'datestamp',
+        );
+      }
+      
+      // Common?
+      $node->field_publish_date[$lang][] = $pubDate;*/
+
+      $publish_date = $o->DatePublished;
+      $pubDate = array(
+        'value' => $publish_date->getTimestamp(),
+        'timezone' => variable_get('date_default_timezone','Europe/Paris'),
+        'timezone_db' => 'UTC',
+        'date_type' => 'datestamp',
+      );
+
+      
+      // Common?
+      $node->field_publish_date[$lang][] = $pubDate;
+
+
+      $node->field_tags = array();
+      $tag_names = _get_old_tag_names($o->ContentID);
+      $term_objs = array();
+      foreach ($tag_names as $key => $tag) {
+        $term_objs[] = _get_create_translated_term($lang, 'tags', $tag);
+      }
+      foreach ($term_objs as $term) {
+        $node->field_tags[$lang][]['tid'] = $term->tid;
+      }
+
+  // ----------------------------------------------------------------------------------------------------------------------------
+
+
+      // ADDTL Fields
+      $node->field_article_cat[$lang][0]['tid'] = '2612';
+      $node->field_article_author = array();
+      $node->field_article_link = array();
+      $node->field_article_img = array();
+      $node->field_article_project = array();
+
+      $img_err = FALSE;
+      if(!empty($o->MediaID)) {
+        $img_file = _get_referenced_media_file($o->MediaID, $lang);
+          //var_dump($img_file);
+        if ($img_file) {
+          $img_file = array_merge((array)$img_file, array('display' => 1));
+          $node->field_article_img[$lang][] = (array)$img_file;
+        }
+        else {
+          $img_err = TRUE;
+        }
+      }      
+
+      $agencies = _get_agency_names();
+      if(!empty($o->StrFlag2)) {
+        $spot_agency = strtolower(rtrim($o->StrFlag2));
+        foreach ($agencies as $acronym => $agency_name) {
+          if (strcmp(strtolower(rtrim($acronym)), $spot_agency) == 0) {
+            $spot_agency = $agency_name;
+            break;
+          }
+        }
+        $term_agency = _get_create_translated_term($lang, 'agencies', $spot_agency, FALSE);
+        $node->field_agency[$lang][]['tid'] = $term_agency->tid;
+      }
+      
+      if(!empty($o->StrFlag4)) {
+        $term_country = _get_create_translated_term($lang, 'countries', $o->StrFlag4);
+        $node->field_country[$lang][]['tid'] = $term_country->tid;
+      }
+      if(!empty($o->StrFlag1)) {
+        $term_focus = _get_create_translated_term($lang, 'focus_areas', $o->StrFlag1);
+        $node->field_focus_area[$lang][]['tid'] = $term_country->tid;
+      }
+
+      
+ // ----------------------------------------------------------------------------------------------------------------------------
+
+      // ON FIRST PASS SAVE THE NODE FOR THE REMAINING TRANSLATIONS
+      if(!isset($node->nid)) { node_save($node); }
+      if ($img_err) {
+        fwrite($logfile, "Error on node $node->nid (Spotlight): Image not found: MediaID $o->MediaID \r\n");
+      }
+    }
+
+
+    // Node save moved out to here in order to handle field translations instead of node based translations
+    // Also a couple of small fixes
+    if(!$node->title) { $node->title = "UNTITLED"; }
+    node_save($node);
+
+  }
+
+}
+
+
+/**
+ * Migrate content from the mssql db into the new Publication content type from the old publication
+ * @param - $args
+ *    Array | an array of command line arguments
+ * 
+ **/
+
+function content_migrate_publications() {
+  global $logfile;
+  $results = _get_publications_from_db();
+  
+  // Loop through the results
+  foreach($results as $key => $lang_array) {
+  
+    $node = _generate_dummy_node_fields("publication"); 
+  
+    foreach($lang_array as $lang => $o) {
+            
+      drush_log("working on contentID " . $o->ID, "warning" );
+      // QUICK SANITIZR to remove " " strings
+      foreach($o as $k => $v) {
+        if(is_string($v)) {
+          $o->$k = trim($v);
+        }
+      }
+      
+  // ----------------------------------------------------------------------------------------------------------------------------
+      
+      // Translation settings
+      if(!isset($node->language)) {
+        $node->language = $lang;
+        $node->translations->original = $lang;
+        $node->translations = new stdClass();
+        $node->translations->data = array();
+      }
+      
+      // Original Language Setting
+      $node->translations->original = $node->language;
+      
+      $node->translations->data[$lang] = array(
+        'entity_type' => 'node',
+        'entity_id' => isset($node->nid) ? $node->nid : 0,
+        'language' => $lang,
+        'source' => isset($node->nid) ? $node->language : '',
+        'uid' => 1,
+        'status' => 1,
+        'translate' => 0,
+        'created' => time(),
+        'changed' => time(),
+      );
+
+ 
+      if(!$node->title) { $node->title = trim(_content_migrate_rawtext_fixes($o->PUBtitle)); }
+      
+      
+      // Translateable title field
+      $node->title_field[$lang][0] = array(
+        'value' => trim(_content_migrate_rawtext_fixes($o->PUBtitle)),
+        'format' => 'full_html',
+        'safe_value' => trim(check_plain(_content_migrate_rawtext_fixes($o->PUBtitle))),
+      );
+
+  // ----------------------------------------------------------------------------------------------------------------------------
+
+      // ADDTL Fields
+      
+      $node->field_publication_isbn = array();
+      $node->field_publication_purchase_link = array();
+      
+      // Publish Date
+      $pubDate = array();
+      if(strtotime($o->PUByear)) {
+        
+        // Date formats are either 0, 2011, 201109 (yyyymm)
+        if(strlen($o->PUByear) > 4) {
+          $date = substr($o->PUByear, 4) . "/" . substr($o->PUByear,-2);  
+        } else if(!$o->PUByear) {
+          $date = time(); // now
+        } else {
+          $date = $o->PUByear;
+        }
+        
+      
+        $pubDate = array(
+          'value' => strtotime($date),
+          'timezone' => variable_get('date_default_timezone','Europe/Paris'),
+          'timezone_db' => 'UTC',
+          'date_type' => 'datestamp',
+        );
+      }
+      
+      $node->field_publish_date[$lang][] = $pubDate;
+
+
+      // Image and Document
+      if(!empty($o->PUBimage)) {
+        $img_data = array(
+          'field_media_folder' => 'images/publications',
+          'base_path' => drupal_realpath('images/publications'),
+        );
+        $img_path = explode('/', $o->PUBimage);
+        $img_path = array_pop($img_path);
+
+        $image_file = _get_import_file($img_path, $img_data);
+        $image_file = array_merge((array)$image_file, array('display' => 1));
+        $node->field_publication_image[$lang][] = $image_file;
+      }
+      $doc_data = array(
+        'ext'=>'.pdf',
+        'type'=>'pdf',
+        'mimetype' => 'application/pdf',
+        'field_media_folder' => 'publications',
+        'base_path' => drupal_realpath('publications'),
+      );
+      if (!empty($o->PUBlink)) {
+        $doc_path = explode('/', $o->PUBlink);
+        $doc_path = array_pop($doc_path);
+        $doc_file = _get_import_file($doc_path, $doc_data);
+        $doc_file = array_merge((array)$doc_file, array('display' => 1));
+        $node->field_publication_file[$lang][] = $doc_file;
+      }
+
+      // Taxonomies
+      if(!empty($o->PUBcategory)) {
+        $term_cat = _get_create_translated_term($lang, 'publication_category', $o->PUBcategory);
+        $node->field_publication_category[$lang][]['tid'] = $term_cat->tid;
+      }
+      
+      if(!empty($o->PUBtype)) {
+        $term_type = _get_create_translated_term($lang, 'publication_type', $o->PUBtype);
+        $node->field_publication_type[$lang][]['tid'] = $term_type->tid;
+      }
+
+      // Acronym handling for agency names
+      $agencies = _get_agency_names();
+      if(!empty($o->PUBagency)) {
+        $pub_agency = strtolower(rtrim($o->PUBagency));
+        if (isset($agencies[$pub_agency])) {
+          $pub_agency = $agencies[$pub_agency];
+        }
+        $term_agency = _get_create_translated_term($lang, 'agencies', $pub_agency);
+        $node->field_agency[$lang][]['tid'] = $term_agency->tid;
+      }
+      
+      if(!empty($o->PUBcountry)) {
+        $term_country = _get_create_translated_term($lang, 'countries', $o->PUBcountry);
+        $node->field_country[$lang][]['tid'] = $term_country->tid;
+      }
+      
+      
+ // ----------------------------------------------------------------------------------------------------------------------------
+
+      // ON FIRST PASS SAVE THE NODE FOR THE REMAINING TRANSLATIONS
+      if(!isset($node->nid)) { node_save($node); }
+
+    }
+    
+    // Node save moved out to here in order to handle field translations instead of node based translations
+    // Also a couple of small fixes
+    if(!$node->title) { $node->title = "UNTITLED"; }
+    node_save($node);
+
+  }
+  
+  
+}
+
+/**
+ * Migrate content from the mssql db into the new photos & slideshows content type from the old gallery
+ * @param - $args
+ *    Array | an array of command line arguments
+ * 
+ **/
+
+function content_migrate_galleries() {
+  global $logfile;
+  global $db;
+  // TODO implement below function
+  $results = _get_galleries_from_db(); 
+
+  // Loop through the results
+  foreach($results as $key => $lang_array) {
+  
+    // $tnid = 0;  
+    $node = _generate_dummy_node_fields("gallery"); // by default languages are english
+  
+    foreach($lang_array as $langID => $o) {
+            
+      $lang = _get_drupal_lang_value_from_lang_id($langID);
+      //$node = _generate_dummy_node_fields("speech", $lang);
+      
+      // Translation settings
+      if(!isset($node->language)) {
+        $node->language = $lang;
+        $node->translations->original = $lang;
+        $node->translations = new stdClass();
+        $node->translations->data = array();
+      }
+
+
+      $added = strtotime($o->SortDate);
+      $updated = $added;
+      $written = $added;
+      
+      // Original Language Setting
+      $node->translations->original = $node->language;
+      
+      $node->translations->data[$lang] = array(
+        'entity_type' => 'node',
+        'entity_id' => isset($node->nid) ? $node->nid : 0,
+        'language' => $lang,
+        'source' => isset($node->nid) ? $node->language : '',
+        'uid' => 1,
+        'status' => 1,
+        'translate' => 0,
+        'created' => $added,
+        'changed' => $updated,
+      );
+
+      $node->tnid = $tnid; // set the translation nid
+      if(!$node->created) { $node->created = $added; }
+      if(!$node->changed){ $node->changed = $updated; }
+      if(!$node->title) { $node->title = trim(_content_migrate_rawtext_fixes($o->GalleryName)); }
+      
+      
+      // Translateable title field
+      $node->title_field[$lang][0] = array(
+        'value' => trim(_content_migrate_rawtext_fixes($o->GalleryName)),
+        'format' => 'full_html',
+        'safe_value' => trim(check_plain(_content_migrate_rawtext_fixes($o->GalleryName))),
+      );
+
+      $node->body[$lang][0]['summary'] = _content_migrate_rawtext_fixes(_content_migrate_inline_image_fixes($o->Blurb_Short));
+      $node->body[$lang][0]['value'] = _content_migrate_rawtext_fixes(_content_migrate_inline_image_fixes($o->Blurb));
+      $node->body[$lang][0]['format'] = 'full_html';
+
+      // ----------------------------------------------------------------------------------------------------------------------------
+      
+      $pubDate = array(
+        'value' => $written,
+        'timezone' => variable_get('date_default_timezone','Europe/Paris'),
+        'timezone_db' => 'UTC',
+        'date_type' => 'datestamp',
+      );
+
+      
+      // Common?
+      $node->field_publish_date[$lang][] = $pubDate;
+
+      // ----------------------------------------------------------------------------------------------------------------------------
+
+
+      // ADDTL Fields
+      $node->field_gallery_event = array();
+      $node->field_related_project = array();
+      $node->field_gallery_short_title[$lang][] = array(
+        'value' => _content_migrate_rawtext_fixes($o->Subtitle),
+      ); 
+
+      $gallery_images = array();
+
+      $gallery_id = $o->GalleryID;
+      $q = "SELECT mgi.* FROM MediaGalleryItem mgi WHERE mgi.GalleryID = $gallery_id ORDER BY DisplayOrder ASC";
+
+      $rawq = sqlsrv_query($db, $q);
+
+      if (sqlsrv_has_rows($rawq)) {
+        while ($o = sqlsrv_fetch_object($rawq)) {
+          $gallery_images[] = $o->MediaID;
+        }
+      }
+
+      foreach ($gallery_images as $image) {
+        $image = _get_referenced_media_file($image, $lang);
+        if ($image) {
+          $image = array_merge((array)$image, array('display' => 1));
+          $node->field_gallery_images[$lang][] = (array)$image;
+        }
+      }
+
+    /*
+      $img_err = FALSE;
+      if(!empty($o->MediaID) && $o->MediaID != 0) {
+        $img_file = _get_referenced_media_file($o->MediaID);
+          //var_dump($img_file);
+        if ($img_file) {
+          $img_file = array_merge((array)$img_file, array('display' => 1));
+          $node->field_podcast_image[$lang][] = (array)$img_file;
+        }
+        else {
+          $img_err = TRUE;
+        }
+      }
+    */
+
+      $node->field_agency = array();
+      $node->field_focus_area = array();
+      if(!empty($o->Location)) {
+        $term_country = _get_create_translated_term($lang, 'countries', $o->Location, FALSE);
+        if ($term_country) {
+          $node->field_country[$lang][]['tid'] = $term_country->tid;
+        }
+      }
+
+      
+    // ----------------------------------------------------------------------------------------------------------------------------
+      // ON FIRST PASS SAVE THE NODE FOR THE REMAINING TRANSLATIONS
+      if(!isset($node->nid)) { node_save($node); }
+      if ($img_err) {
+        fwrite($logfile, "Error on node $node->nid (Spotlight): Image not found: MediaID $o->MediaID \r\n");
+      }
+    }
+
+
+    // Node save moved out to here in order to handle field translations instead of node based translations
+    // Also a couple of small fixes
+    if(!$node->title) { $node->title = "UNTITLED"; }
+    node_save($node);
+
+  }
+}
+
+/**
+ * Migrate content from the mssql db into the new podcast content type from the old videos
+ * @param - $args
+ *    Array | an array of command line arguments
+ * 
+ **/
+
+function content_migrate_videos() {
+  
+}
+
+/**
+ * Migrate content from the mssql db into the new podcast content type from the old postcasts
+ * @param - $args
+ *    Array | an array of command line arguments
+ * 
+ **/
+
+function content_migrate_podcasts() {
+  global $logfile;
+  $results = _get_podcasts_from_db(); 
+
+  // Loop through the results
+  foreach($results as $key => $lang_array) {
+  
+    // $tnid = 0;  
+    $node = _generate_dummy_node_fields("podcast"); // by default languages are english
+  
+    foreach($lang_array as $langID => $o) {
+            
+      $lang = _get_drupal_lang_value_from_lang_id($langID);
+      //$node = _generate_dummy_node_fields("speech", $lang);
+      
+      // Translation settings
+      if(!isset($node->language)) {
+        $node->language = $lang;
+        $node->translations->original = $lang;
+        $node->translations = new stdClass();
+        $node->translations->data = array();
+      }
+
+      $added = $o->DateAdded;
+      $updated = $o->DateUpdated;
+      $written = rtrim($o->DateWritten);
+      $written = explode("/", $written);
+      $written = $written[1] . "/" . $written[0] . "/" . $written[2];
+      
+      // Original Language Setting
+      $node->translations->original = $node->language;
+      
+      $node->translations->data[$lang] = array(
+        'entity_type' => 'node',
+        'entity_id' => isset($node->nid) ? $node->nid : 0,
+        'language' => $lang,
+        'source' => isset($node->nid) ? $node->language : '',
+        'uid' => 1,
+        'status' => 1,
+        'translate' => 0,
+        'created' => $added->getTimestamp(),
+        'changed' => $updated->getTimestamp(),
+      );
+
+      //$node->tnid = $tnid; // set the translation nid
+      if(!$node->created) { $node->created = $added->getTimestamp(); }
+      if(!$node->changed){ $node->changed = $updated->getTimestamp(); }
+      if(!$node->title) { $node->title = trim(_content_migrate_rawtext_fixes($o->ContentHeading)); }
+      
+      
+      // Translateable title field
+      $node->title_field[$lang][0] = array(
+        'value' => trim(_content_migrate_rawtext_fixes($o->ContentHeading)),
+        'format' => 'full_html',
+        'safe_value' => trim(check_plain(_content_migrate_rawtext_fixes($o->ContentHeading))),
+      );
+
+      $node->body[$lang][0]['summary'] = _content_migrate_rawtext_fixes($o->ContentSummary);
+      //$node->body[$lang][0]['safe_summary'] = check_plain(_content_migrate_rawtext_fixes($o->ContentSummary));
+      $node->body[$lang][0]['value'] = _content_migrate_rawtext_fixes($o->ContentText);
+      //$node->body[$lang][0]['safe_value'] = check_plain(_content_migrate_rawtext_fixes($o->ContentText));
+      $node->body[$lang][0]['format'] = 'full_html';
+
+      // ----------------------------------------------------------------------------------------------------------------------------
+      
+      $publish_date = $o->DatePublished;
+      $pubDate = array(
+        'value' => $publish_date->getTimestamp(),
+        'timezone' => variable_get('date_default_timezone','Europe/Paris'),
+        'timezone_db' => 'UTC',
+        'date_type' => 'datestamp',
+      );
+
+      
+      // Common?
+      $node->field_publish_date[$lang][] = $pubDate;
+
+
+      $node->field_tags = array();
+      $tag_names = _get_old_tag_names($o->ContentID);
+      $term_objs = array();
+      foreach ($tag_names as $key => $tag) {
+        $term_objs[] = _get_create_translated_term($lang, 'tags', $tag);
+      }
+      foreach ($term_objs as $term) {
+        $node->field_tags[$lang][]['tid'] = $term->tid;
+      }
+
+      /*
+       * 1. get all tags on a piece of content
+       * 2. get the names of those tags
+       * 3. call _get_create_translated_term on each tag name
+       */
+
+      // ----------------------------------------------------------------------------------------------------------------------------
+
+
+      // ADDTL Fields
+      $node->field_related_project = array();
+      $node->field_podcast_audio = array();
+      
+      $node->field_podcast_type[$lang][0]['tid'] = '2614'; // tid 2614 is 'Video' in 'Podcast Type' vocabulary
+
+      // IntFlag2
+      $node->field_podcast_video = array();
+      if (!empty($o->IntFlag2) && $o->IntFlag2 != 0) {
+        // TODO get the media asset.
+      }
+
+      $img_err = FALSE;
+      if(!empty($o->MediaID) && $o->MediaID != 0) {
+        $img_file = _get_referenced_media_file($o->MediaID, $lang);
+          //var_dump($img_file);
+        if ($img_file) {
+          $img_file = array_merge((array)$img_file, array('display' => 1));
+          $node->field_podcast_image[$lang][] = (array)$img_file;
+        }
+        else {
+          $img_err = TRUE;
+        }
+      }
+
+      $agencies = _get_agency_names();
+      if(!empty($o->StrFlag2)) {
+        $spot_agency = strtolower(rtrim($o->StrFlag2));
+        foreach ($agencies as $acronym => $agency_name) {
+          if (strcmp(strtolower(rtrim($acronym)), $spot_agency) == 0) {
+            $spot_agency = $agency_name;
+            break;
+          }
+        }
+        $term_agency = _get_create_translated_term($lang, 'agencies', $spot_agency, FALSE);
+        if ($term_agency) {
+          $node->field_agency[$lang][]['tid'] = $term_agency->tid;
+        }
+      }
+      
+      if(!empty($o->StrFlag1)) {
+        $term_country = _get_create_translated_term($lang, 'countries', $o->StrFlag1, FALSE);
+        if ($term_country) {
+          $node->field_country[$lang][]['tid'] = $term_country->tid;
+        }
+      }
+      if(!empty($o->SeriesID) && $o->SeriesID != 0) {
+        $term_focus= _podcast_get_focus_area($o->SeriesID, $lang);
+        if ($term_focus) {
+          $node->field_focus_area[$lang][]['tid'] = $term_focus->tid;
+        }
+      }
+
+      
+    // ----------------------------------------------------------------------------------------------------------------------------
+      // ON FIRST PASS SAVE THE NODE FOR THE REMAINING TRANSLATIONS
+      if(!isset($node->nid)) { node_save($node); }
+      if ($img_err) {
+        fwrite($logfile, "Error on node $node->nid (Spotlight): Image not found: MediaID $o->MediaID \r\n");
+      }
+    }
+
+
+    // Node save moved out to here in order to handle field translations instead of node based translations
+    // Also a couple of small fixes
+    if(!$node->title) { $node->title = "UNTITLED"; }
+    node_save($node);
+
+  }
+
+}
+
+
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// HELPER FUNCTIONS
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Generates a generic node template
+ * @param - $type
+ *    String | The content type name
+ * @param - $lang
+ *    String | The string value of the default language
+ * @return - object
+ *    A generic array of common node object values
+ **/
+
+function _generate_dummy_node_fields($type = 'article', $lang = LANGUAGE_NONE) {
+  $obj = new stdClass();
+    
+  $obj->title = '';
+  $obj->log = '';
+  $obj->status = 1;
+  $obj->comment = 0;
+  $obj->promote = 0;
+  $obj->sticky = 0;
+  $obj->type = $type;
+  //  $obj->language = $lang;
+  $obj->created = 0;
+  $obj->changed = 0;
+  $obj->translate = 0;
+  // $obj->body = array(
+  //   LANGUAGE_NONE => array(
+  //     0 => array(
+  //       'value' => '',
+  //       'summary' => '',
+  //       'format' => 'full_html',
+  //       'safe_value' => '',
+  //       'safe_summary' => '',
+  //     )
+  //   )
+  // );
+  $obj->metatags = array();
+  $obj->print_display = 1;
+  $obj->print_display_comment = 0;
+  $obj->print_display_urllist = 1;
+  $obj->name = 'admin';
+  $obj->uid = 1;
+  $obj->picture = 0;
+  $obj->print_mail_display = 1;
+  $obj->print_mail_display_comment = 0;
+  $obj->print_mail_display_urllist = 1;
+  $obj->data = array('overlay'=>1);
+
+  
+  // COMMON
+  $obj->field_tags = array();
+  $obj->field_country = array();
+  $obj->field_agency = array();
+  $obj->field_focus_area = array();
+  $obj->field_caption = array();
+  $obj->field_featured_image = array();
+  $obj->field_create_featured_content = array();
+  
+  $obj->is_new = TRUE;
+  
+  return $obj;
+}
+
+/**
+ * Makes adjustments to raw text blobs in order to correct urls and images
+ * @param - $blob
+ *    The html input generally for the body
+ * @return - string
+ *    The html output of the fixed urls
+ * 
+ **/
+function _content_migrate_rawtext_fixes($blob = '') {
+
+  return $blob;
+}
+
+function _content_migrate_inline_image_fixes($blob = '') {
+  global $logfile;
+  // do stuff to the blob like correct URLS and Image Paths...
+
+  $dom_blob = str_get_html($blob);
+  if (!$dom_blob) { return $blob; }
+  foreach($dom_blob->find('a') as $link) {
+    $link_url = $link->href;
+    $src_url = ltrim($link_url, "/"); //remove all preceding slashes
+    $dest_url_prefix = "/" . variable_get('file_' . file_default_scheme() . '_path', conf_path() . '/files');
+    $import_src_url = "\\\\VBOXSVR\\Downloads\\";
+    $parts = explode('/', $src_url);
+    $copy = TRUE;
+    $is_image_link = FALSE;
+
+    if ($parts[0] == "assets") {
+      $is_image_link = TRUE;
+      if ($parts[1] == "3") {
+        // it's a fullsize image, Check in the /images folder first.
+        $check_if_exists = file_build_uri('images/' . $parts[2]);
+        if(file_exists($check_if_exists)) {
+          //if the file exists, we won't have to recopy it. make the destination url point to the existing file.
+          $copy = FALSE;
+          $dest_url = "images/" . $parts[2];
+        }
+        else {
+          // if it doesn't exist, we'll need to copy it over.
+          $src_url = $import_src_url . "{$parts[0]}\\{$parts[1]}\\{$parts[2]}";
+          $dest_url = ltrim($link_url, "/");
+        }        
+      }
+      else {
+        // it's not a fullsize image. we'll need to copy it.
+        $src_url = $import_src_url . "{$parts[0]}\\{$parts[1]}\\{$parts[2]}";
+        $dest_url = ltrim($link_url, "/");
+      }
+    }
+    else if ($parts[0] == "images") {
+      $is_image_link = TRUE;
+      // it's from the 'images' folder, not the 'assets' folder. This is in the drupal root.
+      $src_url = str_replace("/", "\\", $src_url);
+      array_shift($parts);
+      $src_url = drupal_realpath($src_url);
+      $dest_url = "assets/other/" . end($parts);
+    }
+
+    if ($is_image_link) {
+      //copy the file to the proper location if needed
+      if ($copy) {
+        $did_it_copy = copy($src_url, file_build_uri($dest_url));
+
+        if (!$did_it_copy) {
+          drush_log("File did not copy properly", "error");
+        }
+      }
+
+      //change the link href to the new file
+      $link->href = $dest_url_prefix . "/" . $dest_url;
+      //echo file_build_uri($dest_url) . "\n";
+    }
+  }
+
+  foreach ($dom_blob->find('img') as $img_link) {
+    $link_url = $img_link->src;
+    $src_url = ltrim($link_url, "/"); //remove all preceding slashes
+    $dest_url_prefix = "/" . variable_get('file_' . file_default_scheme() . '_path', conf_path() . '/files');
+    $import_src_url = "\\\\VBOXSVR\\Downloads\\";
+    $parts = explode('/', $src_url);
+    $copy = TRUE;
+    $is_image_link = FALSE;
+
+    if ($parts[0] == "assets") {
+      $is_image_link = TRUE;
+      if ($parts[1] == "3") {
+        // it's a fullsize image, Check in the /images folder first.
+        $check_if_exists = file_build_uri('images/' . $parts[2]);
+        if(file_exists($check_if_exists)) {
+          //if the file exists, we won't have to recopy it. make the destination url point to the existing file.
+          $copy = FALSE;
+          $dest_url = "images/" . $parts[2];
+        }
+        else {
+          // if it doesn't exist, we'll need to copy it over.
+          $src_url = $import_src_url . "{$parts[0]}\\{$parts[1]}\\{$parts[2]}";
+          $dest_url = ltrim($link_url, "/");
+        }        
+      }
+      else {
+        // it's not a fullsize image. we'll need to copy it.
+        $src_url = $import_src_url . "{$parts[0]}\\{$parts[1]}\\{$parts[2]}";
+        $dest_url = ltrim($link_url, "/");
+      }
+    }
+    else if ($parts[0] == "images") {
+      $is_image_link = TRUE;
+      // it's from the 'images' folder, not the 'assets' folder. This is in the drupal root.
+      $src_url = str_replace("/", "\\", $src_url);
+      array_shift($parts);
+      $src_url = drupal_realpath($src_url);
+      $dest_url = "assets/other/" . end($parts);
+    }
+
+    if ($is_image_link) {
+      //copy the file to the proper location if needed
+      if ($copy) {
+        $did_it_copy = copy($src_url, file_build_uri($dest_url));
+
+        if (!$did_it_copy) {
+          drush_log("File did not copy properly", "error");
+        }
+      }
+
+      //change the link href to the new file
+      $img_link->src = $dest_url_prefix . "/" . $dest_url;
+      //echo file_build_uri($dest_url) . "\n";
+    }
+  }
+
+  return $dom_blob;
+}
+
+function _content_migrate_create_redirect($old_url, $nid, $lang) {
+  
+  $new_url = '';
+  $res = db_query("SELECT * FROM {url_alias} u WHERE u.source = :src AND u.language = :lang", array(':src' => 'node/' . $nid, ':lang' => $lang));
+  $record = $res->fetchObject();
+  $new_url = $record->alias;
+
+  $redirect = new stdClass();
+
+  module_invoke(
+    'redirect',
+    'object_prepare',
+    $redirect,
+    array(
+      'source' => $old_url,
+      'source_options' => array(),
+      'redirect' => $new_url,
+      'redirect_options' => array(),
+      'language' => $lang,
+    )
+  );
+
+  module_invoke('redirect', 'save', $redirect);
+
+}
+
+/**
+ * @TODO doc
+ *
+ * @param $cid
+ *   contentID from old database 
+ *
+ * @return $names_array
+ *   array of names of old tags on a piece of content
+ */ 
+function _get_old_tag_names($cid) {
+  global $db;
+  $names_array = array();
+
+
+  $q = "SELECT * FROM ContentTag WHERE ContentID = $cid";
+  $rawq = sqlsrv_query($db, $q);
+
+  if (sqlsrv_has_rows($rawq)) {
+    while ($o = sqlsrv_fetch_object($rawq)) {
+      $q2 = "SELECT * FROM TagSwap WHERE NewTagID = " . $o->TagID;
+      $r2q = sqlsrv_query($db, $q2);
+      if (sqlsrv_has_rows($r2q)) {
+        while ($o2 = sqlsrv_fetch_object($r2q)) {
+          $names_array[] = $o2->TagName;
+        }
+      }
+    }
+  }
+
+  return $names_array;
+}
+
+/**
+ * @TODO doc
+ *
+ * @param $cid
+ *   contentID from old database 
+ *
+ * @return $names_array
+ *   array of names of old tags on a piece of content
+ */ 
+function _get_old_media_tag_names($mid) {
+  global $db;
+  $names_array = array();
+
+
+  $q = "SELECT * FROM MediaTag WHERE MediaID = $mid AND TagID != 0";
+  $rawq = sqlsrv_query($db, $q);
+
+  if ($rawq && sqlsrv_has_rows($rawq)) {
+    while ($o = sqlsrv_fetch_object($rawq)) {
+      $q2 = "SELECT * FROM TagSwap WHERE NewTagID = " . $o->TagID;
+      $r2q = sqlsrv_query($db, $q2);
+      if (sqlsrv_has_rows($r2q)) {
+        while ($o2 = sqlsrv_fetch_object($r2q)) {
+          $names_array[] = $o2->TagName;
+        }
+      }
+    }
+  }
+
+  return $names_array;
+}
+
+/**
+ * @TODO doc
+ */
+function _podcast_get_focus_area($sid, $lang) {
+  global $db;
+
+  $q = "SELECT ci.* FROM ContentItem ci WHERE ci.ContentTypeID = 6 AND ci.CategoryID = 1 AND ci.ContentID = $sid ORDER BY ci.ContentID ASC";
+
+  $rawq = sqlsrv_query($db, $q);
+
+  $count = sqlsrv_has_rows($rawq);
+  if(!$count) { drush_log('ERROR: No results found for content type','error'); return; }
+  
+  // Start looping through the database result data
+  while($o = sqlsrv_fetch_object($rawq)) {
+    $focus_area_name = rtrim($o->ContentHeading);
+  }
+  $term = _get_create_translated_term($lang, 'focus_areas', $focus_area_name, FALSE);
+  return $term;
+}
+
+/**
+ * @TODO doc
+ */
+function _get_podcasts_from_db() {
+  global $db;
+  $results = array();
+  $i = 0;
+  
+  $q = "SELECT ci.* FROM ContentItem ci WHERE ci.ContentTypeID = 6 AND ci.CategoryID = 1 AND ci.StatusID != 999999 AND ci.SeriesID != 0 AND ci.StrFlag2 != 'Aga Khan Award for Architecture' ORDER BY ci.ContentID ASC";
+  // SELCT QUERY
+  $rawq = sqlsrv_query($db, $q);
+  
+  // Count the results
+  $count = sqlsrv_has_rows($rawq);
+  if(!$count) { drush_log('ERROR: No results found for content type','error'); return; }
+  
+  // Start looping through the database result data
+  while($o = sqlsrv_fetch_object($rawq)) {
+  
+    $o->LanguageID = 0;
+    
+    // A unique set of field column values as one string
+    $add = $o->DateAdded;
+    $key = md5($o->StrFlag2.$o->ContentHeading.$add->getTimestamp());
+ 
+    // Add item to array by key to eliminate dupes
+    $results[$key][$o->LanguageID] = $o;
+        
+    // Find translations
+    $rawql = sqlsrv_query($db, "SELECT * FROM ContentLanguage WHERE ContentID = " . $o->ContentID . " AND LanguageID != 0 ORDER BY CLID");
+    $count = sqlsrv_has_rows($rawql);
+    if(!$count) { continue; }
+    
+    while($o2 = sqlsrv_fetch_object($rawql)){
+      
+      // MAP translation content into node object values
+      $no = clone($o); // make a copy so that we are not changing all values
+      $no->LanguageID = $o2->LanguageID;
+      $no->ContentHeading = $o2->ContentHeading;
+      $no->ContentSummary = $o2->ContentSummary;
+      $no->ContentText = $o2->ContentText;
+      
+      // Add item to array by key to eliminate dupes
+      $results[$key][$o2->LanguageID] = $no;
+      
+    }
+  
+  }
+  
+  return $results;
+
+}
+
+/**
+ * Fetches a unique set of results from the contentItem table by content type (ContentTypeID). 
+ * It joins in the ContentLanguage Table to get the translations as well
+ * @param - $id
+ *  integer | The content type id
+ * 
+ * @return - (array) | a unique array of keyed database results eg [a1b2c3] => dbesultObject
+ **/
+
+function _get_content_from_contentItem_table($id) {
+  global $db;
+  $results = array();
+  $i = 0;
+  
+  $q = "SELECT ci.* FROM ContentItem ci WHERE ci.ContentTypeID = $id AND ci.CategoryID = 1 AND ci.StatusID != 999999 ORDER BY ci.ContentID ASC";
+  // SELCT QUERY
+  $rawq = sqlsrv_query($db, $q);
+  
+  // Count the results
+  $count = sqlsrv_has_rows($rawq);
+  if(!$count) { drush_log('ERROR: No results found for content type','error'); return; }
+  
+  // Start looping through the database result data
+  while($o = sqlsrv_fetch_object($rawq)) {
+  
+    $o->LanguageID = 0;
+    
+    // A unique set of field column values as one string
+    $add = $o->DateAdded;
+    $key = md5($o->StrFlag2.$o->ContentHeading.$add->getTimestamp());
+ 
+    // Add item to array by key to eliminate dupes
+    $results[$key][$o->LanguageID] = $o;
+        
+    // Find translations
+    $rawql = sqlsrv_query($db, "SELECT * FROM ContentLanguage WHERE ContentID = " . $o->ContentID . " AND LanguageID != 0 ORDER BY CLID");
+    $count = sqlsrv_has_rows($rawql);
+    if(!$count) { continue; }
+    
+    while($o2 = sqlsrv_fetch_object($rawql)){
+      
+      // MAP translation content into node object values
+      $no = clone($o); // make a copy so that we are not changing all values
+      $no->LanguageID = $o2->LanguageID;
+      $no->ContentHeading = $o2->ContentHeading;
+      $no->ContentSummary = $o2->ContentSummary;
+      $no->ContentText = $o2->ContentText;
+      
+      // Add item to array by key to eliminate dupes
+      $results[$key][$o2->LanguageID] = $no;
+      
+    }
+  
+  }
+  
+  return $results;
+}
+
+
+/**
+ * Get Content from the Publications table and store it in an array
+ * @return - array | Array of mssql result objects or empty array if none
+ * 
+ **/
+
+function _get_publications_from_db() {
+  global $db;
+  $results = array();
+  $map = array(); // storage for an alternate set of keys. 
+  
+  $rawq = sqlsrv_query($db, 'SELECT * FROM PUBLICATIONS WHERE PUBlink NOT LIKE \'publications/akaa/%\' ORDER BY ID');
+  while($o = sqlsrv_fetch_object($rawq)) {
+        
+    // We have multiple keys in order to match up entries with their language translations
+    $str1 = $o->PUBtitle . $o->PUBagency . $o->PUByear;
+    $str2 = $o->PUBagency . $o->PUByear . $o->PUBtype . $o->PUBimage;
+    $key = md5($str1);
+    $key2 = md5($str2);
+
+    
+    // Get the language
+    $lang = _get_drupal_lang_value_from_full_string($o->PUBlanguage);    
+    
+    // If the second key exists we only want to match up a translation
+    // Get the first key if there is a match
+    if(array_key_exists($key2, $map)) {    
+      if(!isset($results[$map[$key2]][$lang])) {
+        $key = $map[$key2];
+      }
+    } else {
+      
+      // no match store a new mapping
+      $map[$key2] = $key;
+    }
+    
+    // Store the results
+    $results[$key][$lang] = $o;
+    
+  }
+
+  return $results;
+}
+
+/**
+ * Fetches all galleries from the MediaGallery table in the db.
+ *
+ * @return array $results
+ *   a unique array of keyed database results
+ */
+function _get_galleries_from_db() {
+  global $db;
+  $results = array();
+  $i = 0;
+  
+  $q = "SELECT mg.* FROM MediaGallery mg ORDER BY mg.GalleryID ASC";
+  // SELCT QUERY
+  $rawq = sqlsrv_query($db, $q);
+
+  while ($o = sqlsrv_fetch_object($rawq)) {
+
+    $o->LanguageID = 0;
+    
+    // A unique set of field column values as one string
+    $add = strtotime($o->SortDate);
+    $key = md5($o->GalleryName.$add);
+ 
+    // Add item to array by key to eliminate dupes
+    $results[$key][$o->LanguageID] = $o;
+
+  }
+
+
+  return $results;
+}
+
+/**
+ * Translates the Language ID from the AKDN db into a drupal string
+ * @param - $langID
+ *  int | the language id #
+ * 
+ * @return - string | the drupal language value eg: und, fr, en
+ * 
+ **/
+
+function _get_drupal_lang_value_from_lang_id($langID = 0) {
+    
+  $vals = array(
+    0 => "en", // english
+    1 => "fr", // french
+    2 => "de", // german
+    3 => 'it', // italian
+    4 => 'es', // spanish
+    5 => 'pt', // portuguese
+    6 => 'ru', // russion
+    7 => 'ar', // arabic
+    8 => 'tg', // tajik
+  );
+  
+  if(isset($vals[$langID])) { return $vals[$langID]; } // found a lang
+  return LANGUAGE_NONE; // undefined lang
+}
+
+
+/**
+ * Translates a full string name of a language eg "English" to 
+ * the 2 character code
+ * @param - $language | String
+ *  The full name of the language
+ * @return - String
+ *  The Two character code
+ * 
+ **/
+
+function _get_drupal_lang_value_from_full_string($language) {
+  
+  $langID = strtolower($language);
+  
+  $vals = array(
+    'english'       => "en", // english
+    'french'        => "fr", // french
+    'français'      => "fr", // french
+    'german'        => "de", // german
+    'italian'       => 'it', // italian
+    'spanish'       => 'es', // spanish
+    'portuguese'    => 'pt', // portuguese
+    'russian'       => 'ru', // russion
+    'arabic'        => 'ar', // arabic
+    'tajik'         => 'tg', // tajik
+    'farsi'         => 'fa', // Persian
+    'malay'         => 'ms', // Malay
+    'dari'          => 'fa', // Persian
+  );
+  
+  if(isset($vals[$langID])) { return $vals[$langID]; } // found a lang
+  return LANGUAGE_NONE; // undefined lang
+  
+}
+
+/**
+ * Helper function to get a listing of agency names
+ * @return - Array
+ *  Array of Agency names keyed by agency acronym
+ */
+function _get_agency_names() {
+  global $db;
+  $raw = sqlsrv_query($db, 'SELECT * FROM Agency ORDER BY AgencyID');
+
+  $vals = array();
+  while ($o = sqlsrv_fetch_object($raw)) {
+    $name = $o->AgencyName;
+    $name = explode('(', $name);
+    $name = $name[0];
+    $vals[strtolower(rtrim($o->AgencyID))] = $name;
+  }
+  //print_r($vals);
+  return $vals;
+}
+
+/**
+ * Quick helper function to get an array of all the enabled language objects
+ * @return array | an array of language objects
+ **/
+ 
+function _get_languages() {
+  $langs = language_list();
+ // var_dump($langs);
+  return $langs;
+}
+
+
+/**
+ * A get/create and return function for taxonomy terms
+ * @param - $lang
+ *    String | The character code
+ * @param - $vocab
+ *    String | The vocabulary machine id
+ * @param - $name
+ *    String | The text value of the vocabulary term
+ * @return | TermObject
+ * 
+ **/
+
+function _get_create_translated_term($lang, $vocab, $name, $create = TRUE) {
+
+  $name = rtrim($name);
+  $term = taxonomy_get_term_by_name($name, $vocab);
+    
+  // If we dont find a term we need to create one
+  if(!count($term) && $create) {
+    $vocab = taxonomy_vocabulary_machine_name_load($vocab);
+    
+    $term = new stdClass();
+    $term->name = $name;
+    $term->vid = $vocab->vid;
+    taxonomy_term_save($term);
+    return $term;
+  }
+  
+  // We found one on the inital lookup return it
+  return reset($term);
+}
+
+
+function _get_referenced_media_file($media_id, $lang = LANGUAGE_NONE) {
+  global $db;
+
+  // gets secondary file data for image. Array key corresponds to the
+  // MediaTypeID in dbo.MediaType
+  $media_types = array(
+    // '1' indicates image; default args will be used.
+    '1' => array(
+      'field_media_folder' => 'images',
+      'base_path' => drupal_realpath('images'),
+    ),
+    // '2' indicates video; not importing.
+    '2' => array(
+    
+    ),
+    // '3' indicates PDF.
+    '3' => array(
+      'ext'=>'.pdf',
+      'type'=>'pdf',
+      'mimetype' => 'application/pdf',
+      'field_media_folder' => 'publications',
+      'base_path' => drupal_realpath('publications'),
+    ),
+  );
+  $q =  "SELECT * FROM Media WHERE MediaID = $media_id";
+
+  $rawq = sqlsrv_query($db, $q);
+  while($o = sqlsrv_fetch_object($rawq)) {
+    $data = $media_types[$o->MediaTypeID];
+    $data['orig_id'] = $media_id;
+    $filename = explode(".", $o->MediaName);
+    $data['filename'] = trim($filename[0]);
+    if (isset($filename[1])) {
+      $data['ext'] = "." . $filename[1];
+    }
+    $file = _get_import_file($media_id, $data);
+
+    // ADD new fields
+    // TODO:  add the additional fields to the file object
+    if ($file && $o->MediaTypeID == 1) {
+      if ($o->MediaName) {
+        $file->filename = _content_migrate_rawtext_fixes($o->MediaName);
+      }
+      $file->field_image_caption[$lang][0] = array(
+        'value' => _content_migrate_rawtext_fixes(trim($o->Caption)),
+      );
+      $file->field_image_rough_caption[$lang][0] = array(
+        'value' => _content_migrate_rawtext_fixes(trim($o->RoughCaption)),
+      );
+      $file->field_image_copytight[$lang][0] = array(
+        'value' => _content_migrate_rawtext_fixes(trim($o->Copyright)),
+      );
+      $file->field_image_description[$lang][0] = array(
+        'value' => _content_migrate_rawtext_fixes(trim($o->Description)),
+      );
+      $file->field_image_source[$lang][0] = array(
+        'value' => _content_migrate_rawtext_fixes(trim($o->Source)),
+      );
+
+      $publish_date = $o->DateTaken;
+      $pubDate = array(
+        'value' => $publish_date->getTimestamp(),
+        'timezone' => variable_get('date_default_timezone','Europe/Paris'),
+        'timezone_db' => 'UTC',
+        'date_type' => 'datestamp',
+      );
+      if ($o->DateTaken) {
+        $taken = $o->DateTaken;
+
+
+        $file->field_image_date_taken[$lang][0] = array(
+          'value' => $taken->getTimestamp()? $taken->getTimestamp() : 0,
+          'timezone' => variable_get('date_default_timezone','Europe/Paris'),
+          'timezone_db' => 'UTC',
+          'date_type' => 'datestamp',
+        );
+      }
+      //Handle tagging for images here
+      $file->field_tags = array();
+      $tag_names = _get_old_media_tag_names($o->ContentID);
+      $term_objs = array();
+      foreach ($tag_names as $key => $tag) {
+        $term_objs[] = _get_create_translated_term($lang, 'tags', $tag);
+      }
+      foreach ($term_objs as $term) {
+        $file->field_tags[$lang][]['tid'] = $term->tid;
+      }
+
+      $file = file_save($file);
+      print_r($file);
+    }
+
+  }
+
+  return $file;
+}
+
+/**
+ * This function adjusts database paths to proper server paths
+ * and imports the file into the files/media system
+ * @param - $url
+ *   String | The db path to the server
+ * @param - $data
+ *  Array | An array of additional arguments or data
+ *    'ext' | is because the server never stores file extensions
+ *    'type' | file type. Usually image
+ *    'mimetype' | the file mimetype
+ *    'base_path' | a server path to prepend to the db path 
+ * @return | file_object
+ **/
+
+function _get_import_file($url, $data = array()) {
+  module_load_include('inc', 'file_entity', 'file_entity.file_api');
+  $debug = FALSE; // turn off when running for real
+
+  $default_args = array(
+    'ext'=>'.jpg',
+    'type'=>'image',
+    'mimetype' => 'image/jpeg',
+    'field_media_folder' => '',
+  );
+
+  $args = array_merge($default_args, $data);
+
+  $filename = ltrim($args['filename'], "/"); // remove any preceeding slashes
+  $filename = $filename . $args['ext'];
+  $url = $url . $args['ext']; // add the default extension
+  $src_url = "\\\\VBOXSVR\\Downloads\\assets\\3\\" . $url;
+  // Add base path
+  if(isset($args['base_path'])) {
+    $filename = $args['base_path'] . "/" . $filename;
+  }
+  //Destination URL
+  $dest_url = array_pop(explode('/', $url));
+  $dest = $args['field_media_folder'];
+  $rdy = file_prepare_directory($dest, FILE_CREATE_DIRECTORY);
+  $destination = file_build_uri($dest . '\\' . $dest_url);
+
+  // Check if file already exists. If it does, return the file object.
+  if (file_exists(drupal_realpath($destination))) {
+    $file_by_uri = file_uri_to_object(drupal_realpath($destination));  
+    if ($file_by_uri->fid) {
+      drush_log("file already existed, using it.", "warning");
+      return $file_by_uri;
+    }
+  }
+
+  // If the file doesnt exist and we are not in debug log an error
+  if(!file_exists($src_url)/* && !$debug*/) {
+    $src_url = $filename;
+    if (!file_exists($src_url)) {
+      drush_log("ERROR: could not find file '$url' ($src_url)\n", 'error');
+      return FALSE;
+    }
+    else {
+      drush_log("file '$url' was found in the assets folder.", "warning");
+    }
+  }
+
+  // If file doesnt exist and we must be in debug use default files
+  if(!file_exists($src_url) && $debug) {
+    $url ="migration/akdn" . $args['ext'];
+  }
+  
+  
+  // We now have a path to a file that we want to move into the drupal system.
+  $filename = end(explode('/',$url));
+  $source = new stdClass();
+  //$source->filepath = $url;
+  $source->filename = $filename;
+  $source->uri = $src_url;//file_build_uri($url);
+  $source->filemime = $args['mimetype'];
+
+    // New file
+  $file = file_copy($source, $destination);
+
+  return $file;
+
+}
+
+function get_file($args = array()) {
+  /*$doc_data = array(
+    'ext'=>'.pdf',
+    'type'=>'pdf',
+    'mimetype' => 'application/pdf',
+    'field_media_folder' => 'publications',
+    'base_path' => drupal_realpath('publications'),
+  );
+  $f = _get_import_file('1995_000', $doc_data);*/
+  $img_data = array(
+    'ext' => '.gif',
+    'type' => 'gif',
+    'mimetype' => 'image/gif',
+    'field_media_folder' => "images",
+    'base_path' => "\\\\VBOXSVR\\Downloads",
+  );
+  $f = _get_import_file('150x150', $img_data);
+  var_dump($f);
+}
+
+function junk() {
+  $file = _get_referenced_media_file(1300, 'en');
+  return;
+
+
+
+  //print drupal_realpath('publications');
+  $filename = "import.txt";
+  echo mb_internal_encoding() . "\r\n";
+  $handle = fopen($filename, "w");
+  // fwrite($handle, "Hello world!");
+  // fwrite($handle, "test again\r\n");
+  // fwrite($handle, "test3");
+  global $db;
+  sqlsrv_query($db, "SET NAMES utf8");
+  $rawql = sqlsrv_query($db, "SELECT * FROM ContentLanguage WHERE ContentID = 687 AND LanguageID != 0 ORDER BY CLID");
+    $count = sqlsrv_has_rows($rawql);
+    if(!$count) { continue; }
+    
+    while($o2 = sqlsrv_fetch_object($rawql)){
+      fwrite($handle, $o2->ContentHeading . "\r\n");
+
+    }
+  fclose($handle);
+}
+
+function test_scan_html() {
+  $test = "<strong>Please also see:</strong> <a href=\"/Content/1028\">Speech by M. Frédéric Mitterrand</a> et <a href=\"/speeches_detail.asp?id=1028&amp;idlng=1\">Discours de M. Frédéric Mitterrand en franais</a>
+
+<a href=\"/assets/3/1314.jpg\" target=\"_blank\"><img src=\"/assets/6/1314.JPG\" alt=\"His Highness the Aga Khan with his brother Prince Amyn Aga Khan at the Ministry of Culture in Paris after they were decorated for their work in culture. Photo: Farida Bréchemier/MCC\" border=\"0\" class=\"left\"></a><span class=\"main_left\">His Highness the Aga Khan with his brother Prince Amyn Aga Khan at the Ministry of Culture in Paris after they were decorated for their work in culture.
+
+Photo: Farida Bréchemier / MCC</span><strong>Paris, France,&nbsp;9 November 2010 -</strong>&nbsp;The French Minister for Culture and Communication, Frédéric Mitterrand, on behalf of the French government, today conveyed honours on His Highness the Aga Khan and his brother Prince Amyn Aga&nbsp;Khan. Recognising their contributions to culture, both personally and through the various activities of the Aga Khan Development Network, the Minister noted that the promotion of culture had a privileged position amongst all of their multiple activities, because “you are convinced of its importance in the process of improving the quality of life globally”.
+
+<a href=\"/assets/3/1315.jpg\" target=\"_blank\"><img src=\"/assets/6/1315.JPG\" alt=\"Prince Amyn Aga Khan, France’s Minister for Culture and Communication, Frédéric Mitterrand and His Highness the Aga Khan at the ceremony in Paris where the Aga Khan and his brother Prince Amyn were recognised for their contributions to culture.&lt;br&gt;Photo: Farida Bréchemier/MCC\" border=\"0\" class=\"left\"></a><span class=\"main_left\">Prince Amyn Aga Khan, France’s Minister for Culture and Communication, Frédéric Mitterrand and His Highness the Aga Khan at the ceremony in Paris where the Aga Khan and his brother Prince Amyn were recognised for their contributions to culture.
+
+Photo: Farida Bréchemier / MCC</span>He also paid tribute to their work: “All these initiatives are carried out in line with the attention to perfection that is your hallmark; you apply the criteria of excellence to philanthropy. Your demanding standards are admired. Your hospitals, schools and banks are exemplary models and organisations bearing the name Aga Khan offer a guarantee of quality to all.”";
+
+  $test = _content_migrate_rawtext_fixes($test);
+
+  echo $test;
+
+}
+
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * INITIALIZR
+ * Runs stuff
+ **/
+ 
+$args = drush_get_arguments();
+configure_environment($args); // setup 
+
+if(function_exists($args[2])) {
+  $args[2]($args);
+  fclose($logfile);
+  drush_log('completed running', 'ok');
+} else {
+  drush_log('Could not find drush script command', 'error');
+}
+
+
+?>

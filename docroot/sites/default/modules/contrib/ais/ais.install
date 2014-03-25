@@ -1,0 +1,90 @@
+<?php
+/**
+ * @file
+ * Install file for the threshold-ais module
+ *
+ */
+
+/**
+ * Implements hook_install().
+ */
+function ais_install() {
+  $defaults = array(
+    array('name' => 'threshold-480', 'size' => 480),
+    array('name' => 'threshold-768', 'size' => 768),
+    array('name' => 'threshold-992', 'size' => 992),
+    array('name' => 'threshold-1382', 'size' => 1382),
+  );
+  variable_set("ais_adaptive_styles", $defaults);
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function ais_unistall() {
+  variable_del("ais_adaptive_styles");
+}
+
+/**
+ * Implements hook_requirements().
+ */
+function ais_requirements($phase) {
+  $t = get_t();
+  $requirements = array();
+
+  if ($phase == 'runtime') {
+    if (!preg_match("/apache/i", php_sapi_name()) and !preg_match("/apache/i", $_SERVER["SERVER_SOFTWARE"])) {
+      $requirements['apache'] =  array(
+        'title' => $t("Adaptive Image Styles"),
+        'description' => $t("It doesn't look like you're running Apache.  Please verify that the web server settings required are in place for AIS to work."),
+        'severity' => REQUIREMENT_WARNING,
+      );
+      return $requirements;
+    }
+
+    $rules = "RewriteCond %{REQUEST_URI} ^(.+)/files/styles/adaptive/(.+)$\n  RewriteCond %{HTTP_COOKIE} ais=([a-z0-9-_]+)\n  RewriteRule ^(.+)/files/styles/adaptive/(.+)$ /$1/files/styles/%1/$2 [R=302,L]";
+    $after = "RewriteCond %{REQUEST_FILENAME} !-f\n  RewriteCond %{REQUEST_FILENAME} !-d\n  RewriteCond %{REQUEST_URI} !=/favicon.ico\n  RewriteRule ^ index.php [L]";
+
+    $htaccess = file_get_contents(".htaccess");
+
+    if (!$htaccess) {
+      $requirements['htaccess'] =  array(
+        'title' => $t("Adaptive Image Styles"),
+        'description' => $t("The htaccess file could not be checked, please verify that AIS is working correctly."),
+        'severity' => REQUIREMENT_WARNING,
+      );
+      return $requirements;
+    }
+
+    $after_loc = strpos($htaccess, $after);
+    $rules_loc = strpos($htaccess, $rules);
+
+    if (!$after_loc) {
+      $requirements['parsing'] =  array(
+        'title' => $t("Adaptive Image Styles"),
+        'description' => $t("There was a problem finding standard Drupal rules in the htaccess file, please verify that AIS is working correctly."),
+        'severity' => REQUIREMENT_WARNING,
+      );
+      return $requirements;
+    }
+
+    if (!$rules_loc) {
+      $requirements['patched'] =  array(
+        'title' => $t("Adaptive Image Styles"),
+        'description' => $t("Couldn't find the AIS htaccess rules in the htaccess file.  Without these rules, AIS will not work."),
+        'severity' => REQUIREMENT_ERROR,
+      );
+      return $requirements;
+    }
+
+    if ($rules_loc > $after_loc) {
+      $requirements['wrongspot'] =  array(
+        'title' => $t("Adaptive Image Styles"),
+        'description' => $t("The rules added for AIS to work need to come before Drupals index.php redirect rules."),
+        'severity' => REQUIREMENT_ERROR,
+      );
+      return $requirements;
+    }
+  }
+}
+

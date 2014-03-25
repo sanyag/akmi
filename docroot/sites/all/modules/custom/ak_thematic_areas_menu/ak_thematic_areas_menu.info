@@ -1,0 +1,16 @@
+name = AK Thematic Areas Menu
+description = This feature captures the Thematic Areas menu under the Main Menu
+core = 7.x
+package = AKDN.org
+php = 5.2.4
+version = 7.x-1.2
+project = ak_thematic_areas_menu
+dependencies[] = features
+dependencies[] = menu
+features[features_api][] = api:1
+features[menu_custom][] = main-menu
+features[menu_links][] = main-menu:node/2222
+features[menu_links][] = main-menu:node/2225
+features[menu_links][] = main-menu:node/2226
+features[menu_links][] = main-menu:node/2229
+features[menu_links][] = main-menu:thematic-areas

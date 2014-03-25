@@ -1,0 +1,112 @@
+html[dir='rtl'] {
+  /***********************************************************************
+ *                          HUB PAGE PANEL                             *
+ ***********************************************************************/
+
+  /*
+  div.panel-display.omega-24-threerow-stacked {
+
+    div.panel-panel-panel-top {
+
+    }
+
+    div.panel-panel.panel-middle {
+
+    }
+
+    div.panel-panel.panel-bottom {
+
+    }
+  }
+ */
+
+  /***********************************************************************
+ *                          VIEWS HANDLERS                             *
+ ***********************************************************************/
+
+}
+html[dir='rtl'] .view-publications.view-display-id-page .view-content .group-left,
+html[dir='rtl'] .view-galleries.view-display-id-page .view-content .group-left,
+html[dir='rtl'] .view-podcasts.view-display-id-page .view-content .group-left {
+  float: right;
+}
+html[dir='rtl'] .view-publications.view-display-id-page .view-content .group-right,
+html[dir='rtl'] .view-galleries.view-display-id-page .view-content .group-right,
+html[dir='rtl'] .view-podcasts.view-display-id-page .view-content .group-right {
+  float: left;
+}
+html[dir='rtl'] .view-articles.view-display-id-page .view-content .group-left,
+html[dir='rtl'] .view-articles.view-display-id-page_1 .view-content .group-left {
+  float: right;
+}
+html[dir='rtl'] .view-articles.view-display-id-page .view-content .group-right,
+html[dir='rtl'] .view-articles.view-display-id-page_1 .view-content .group-right {
+  float: left;
+}
+html[dir='rtl'] .view-projects.view-display-id-page_1 .view-content .group-left {
+  float: right;
+}
+html[dir='rtl'] .view-projects.view-display-id-page_1 .view-content .group-right {
+  float: left;
+}
+html[dir='rtl'] .view-events.view-display-id-page_upcoming .view-content .group-left,
+html[dir='rtl'] .view-events.view-display-id-page_past .view-content .group-left {
+  float: right;
+}
+html[dir='rtl'] .view-events.view-display-id-page_upcoming .view-content .group-right,
+html[dir='rtl'] .view-events.view-display-id-page_past .view-content .group-right {
+  float: left;
+}
+html[dir='rtl'] .view-press-center.view-display-id-block .views-row .view-field-field-article-img {
+  float: right;
+  margin: 3px 0 5px 20px;
+}
+html[dir='rtl'] .view-press-center.view-display-id-block_1 .views-limit-grouping-group .views-field-field-podcast-image,
+html[dir='rtl'] .view-press-center.view-display-id-block_1 .views-limit-grouping-group .views-field-field-event-image,
+html[dir='rtl'] .view-press-center.view-display-id-block_1 .views-limit-grouping-group .views-field-field-publication-image,
+html[dir='rtl'] .view-press-center.view-display-id-block_1 .views-limit-grouping-group .views-field-field-event-image {
+  float: right;
+  padding: 3px 0 0px 10px;
+  /*          padding: 0 0 10px 10px; */
+
+}
+html[dir='rtl'] .view-press-center.view-display-id-block_1 .views-limit-grouping-group .views-field-php {
+  float: left;
+}
+html[dir='rtl'] .view-press-center.view-display-id-block_2 .views-limit-grouping-group .views-field-field-event-image,
+html[dir='rtl'] .view-press-center.view-display-id-block_2 .views-limit-grouping-group .views-field-field-podcast-image,
+html[dir='rtl'] .view-press-center.view-display-id-block_2 .views-limit-grouping-group .views-field-field-publication-image,
+html[dir='rtl'] .view-press-center.view-display-id-block_2 .views-limit-grouping-group .views-field-field-speech-image,
+html[dir='rtl'] .view-press-center.view-display-id-block_2 .views-limit-grouping-group .views-field-field-gallery-images {
+  float: right;
+  margin: 3px 0 0px 10px;
+  /*          margin: 0 0 10px 10px; */
+
+}
+html[dir='rtl'] .view-press-releases.view-display-id-block_2 .view-content .views-field-field-article-img {
+  float: right;
+  padding: 0 0 10px 10px;
+}
+html[dir='rtl'] .view-projects-press-centre.view-display-id-block .views-field-field-project-image,
+html[dir='rtl'] .view-projects-press-centre.view-display-id-block_1 .views-field-field-project-image,
+html[dir='rtl'] .view-projects-press-centre.view-display-id-block_2 .views-field-field-project-image,
+html[dir='rtl'] .view-projects-press-centre.view-display-id-block .views-field-field-image,
+html[dir='rtl'] .view-projects-press-centre.view-display-id-block_1 .views-field-field-image,
+html[dir='rtl'] .view-projects-press-centre.view-display-id-block_2 .views-field-field-image,
+html[dir='rtl'] .view-projects-press-centre.view-display-id-block .views-field-field-article-img,
+html[dir='rtl'] .view-projects-press-centre.view-display-id-block_1 .views-field-field-article-img,
+html[dir='rtl'] .view-projects-press-centre.view-display-id-block_2 .views-field-field-article-img,
+html[dir='rtl'] .view-projects-press-centre.view-display-id-block .views-field-field-speech-image,
+html[dir='rtl'] .view-projects-press-centre.view-display-id-block_1 .views-field-field-speech-image,
+html[dir='rtl'] .view-projects-press-centre.view-display-id-block_2 .views-field-field-speech-image {
+  float: right;
+  padding: 0 0 10px 10px;
+}
+html[dir='rtl'] .view-agencies.view-display-id-page .views-row .views-field-field-agency-logo,
+html[dir='rtl'] .view-focus-areas.view-display-id-page .views-row .views-field-field-agency-logo,
+html[dir='rtl'] .view-agencies.view-display-id-page .views-row .views-field-field-hub-page-image,
+html[dir='rtl'] .view-focus-areas.view-display-id-page .views-row .views-field-field-hub-page-image {
+  display: block;
+  float: right;
+  margin: 0 0 0 20px;
+}

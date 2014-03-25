@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the solr_press_center_lanading_page feature.
+ */
+
+include_once 'solr_press_center_lanading_page.features.inc';

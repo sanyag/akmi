@@ -1,0 +1,33 @@
+<?php
+
+/**
+ * Implements hook_wm_item().
+ */
+function wm_users_wm_item() {
+  $images = drupal_get_path('module', 'wm_users') . '/images/';
+
+  $items['user'] = array(
+      '#title' => 'People',
+      '#class' => array(),
+      '#weigth' => 1,
+      '#items' => array(
+          'all-user' => array(
+              'icon' => $images . 'users.png',
+              'title' => t('View all users'),
+              'href' => 'admin/people',
+              'help' => t('View all users'),
+              'shortcut' => TRUE,
+            //'notification_callback' => '',
+          ),
+          'create-user' => array(
+              'icon' => $images . 'user--plus.png',
+              'title' => t('Register a new user'),
+              'href' => 'admin/people/create',
+              'help' => t('This allows a new user to log-in'),
+            //'notification_callback' => '',
+          ),
+      ),
+  );
+
+  return $items;
+}

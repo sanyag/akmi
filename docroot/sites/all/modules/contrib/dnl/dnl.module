@@ -1,0 +1,69 @@
+<?php
+
+/**
+ * Implements hook_form_alter().
+ */
+
+function dnl_form_alter(&$form, &$form_state, $form_id) {
+  if (in_array($form_id, array_keys(node_forms()))) {
+    if (isset($form['language']['#options'])) {
+      $type_name = $form['#node']->type;
+      $active_langs = variable_get("dnl_active_langs_$type_name", array());
+      $lang_for_source = variable_get("dnl_language_for_source_$type_name", '__NO_SELECTED');
+   /* remove inactive languages */
+      foreach ($form['language']['#options'] as $key => $value) {
+        if (!isset($active_langs[$key])) {
+          unset($form['language']['#options'][$key]);
+        }
+      }
+   /* set source language */
+      if ($lang_for_source != '__NO_SELECTED' && !isset($form['#node']->nid) && !isset($form['#node']->translation_source)) {
+        $form['language']['#disabled'] = TRUE;
+        $form['language']['#default_value'] = $lang_for_source;
+      }
+    }
+  }
+}
+
+/**
+ * Implements form_FORM_ID_alter().
+ */
+
+function dnl_form_node_type_form_alter(&$form, &$form_state) {
+  if (isset($form['workflow']['language_content_type'])) {
+    $type_name = $form['#node_type']->type;
+    $all_langs_wn = array(LANGUAGE_NONE => t('Language neutral')) + locale_language_list('name');
+    $active_langs = variable_get("dnl_active_langs_$type_name", array());
+    $lang_for_source = variable_get("dnl_language_for_source_$type_name", '__NO_SELECTED');
+    $form['workflow']['dln'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Additional language settings'),
+      '#collapsible' => TRUE,
+      '#collapsed' => FALSE,
+    );
+    $form['workflow']['dln']['languages_used'] = array(
+      '#type' => 'checkboxes',
+      '#title' => t('What languages are active in this type?'),
+      '#options' => $all_langs_wn,
+      '#default_value' => $active_langs,
+    );
+    $form['workflow']['dln']['lang_for_source'] = array(
+      '#type' => 'select',
+      '#title' => t('Language for source'),
+      '#options' => array('__NO_SELECTED' => '-') + $all_langs_wn,
+      '#default_value' => $lang_for_source,
+    );
+    $form['#submit'][] = 'dnl_node_type_form_submit';
+  }
+}
+
+function dnl_node_type_form_submit($form, &$form_state) {
+  $type_name = $form_state['values']['type'];
+  $active_langs = array();
+  foreach ($form_state['values']['languages_used'] as $key => $value) if ($value) $active_langs[$key]= $value;
+  variable_set("dnl_active_langs_$type_name", $active_langs);
+  variable_set("dnl_language_for_source_$type_name", $form_state['values']['lang_for_source']);
+}
+
+
+

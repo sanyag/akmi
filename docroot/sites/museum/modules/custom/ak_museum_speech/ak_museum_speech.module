@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the AK Museum Speech feature.
+ */
+
+include_once 'ak_museum_speech.features.inc';

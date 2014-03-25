@@ -1,0 +1,97 @@
+<?php
+
+/**
+ * Implementation of hook_init().
+ */
+function ak_rotator_init() {
+  drupal_add_js('sites/all/libraries/jquery.slides/slides.min.jquery.js');
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function ak_rotator_theme($existing, $type, $theme, $path) {
+  return array(
+    'ak_rotator_featured_content' => array(
+      'variables' => array(),
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_block_info().
+ */
+function ak_rotator_block_info() {
+  $blocks['featured_content'] = array(
+    'info' => t('Featured Content Rotator'),
+  );
+  
+  return $blocks;
+}
+ 
+/**
+ * Implementation of hook_block_view().
+ */
+function ak_rotator_block_view($delta = '') {
+  $block = array();
+  
+  switch ($delta) {
+    case 'featured_content':
+      $block['content'] = theme('ak_rotator_featured_content');
+      break;
+  }
+  
+  return $block;
+}
+
+/**
+ * Displays featured content nodequeue in rotator.
+ */
+function theme_ak_rotator_featured_content() {
+  $output = '';
+  
+  if (function_exists('nodequeue_load_nodes')) {
+    $nodequeue = nodequeue_load_nodes(2);
+    
+    $slides = array();
+    foreach ($nodequeue as $node) {
+      foreach ($node->body as $lang => $data) {
+        $body = $data[0]['value'];
+      }
+      foreach ($node->field_feature_image as $lang => $data) {
+        $image = $data[0]['uri'];
+      }
+      foreach ($node->field_feature_link as $lang => $data) {
+        $link = l(t($data[0]['title']), $data[0]['url']);
+      }
+      
+      $slides[] = array(
+        'image' => $image,
+        'title' => $node->title,
+        'body'  => $body,
+        'link'  => $link,
+      );
+    }
+   
+    if (!empty($slides)) {   
+      $output  = '<div id="slides">';
+      $output .= '<div class="slides_container">';
+      foreach ($slides as $id => $data) {
+        $output .= '<div style="display: block; width: 490px; height: 280px; background: #ccc url('. image_style_url('featured_content', $data['image']) .') no-repeat top left;">';
+        $output .= '    <span style="display: block;" class="info">';
+        $output .= '      <h2>'. $data['title'] .'</h2>';
+        $output .=        $data['body'];
+        $output .=        $data['link'];
+        $output .= '    </span>';
+        $output .= '</div>';
+      }
+      $output .= '</div>';
+      $output .= '</div>';
+    }
+  } 
+  
+  // Add JS to power up rotator.
+  drupal_add_js(drupal_get_path('module', 'ak_rotator') .'/ak_rotator.js');
+  
+  return $output; 
+}

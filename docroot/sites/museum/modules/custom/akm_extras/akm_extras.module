@@ -1,0 +1,185 @@
+<?php
+
+/**
+ * Implements hook_js_alter().
+ */
+function akm_extras_js_alter(&$javascript) {
+  if (arg(0) == 'node' && is_numeric(arg(1)) && arg(2) != 'edit') {
+    $node = node_load(arg(1));
+    if ($node->type == 'gallery') {
+      $javascript['misc/jquery.js']['data'] = drupal_get_path('module', 'akm_extras') . '/js/jquery-1.7.2.min.js';
+      $javascript['misc/jquery.js']['version'] = '1.7.2';
+    }
+  }
+
+}
+
+/**
+ * Implements hook_block_info().
+ */
+function akm_extras_block_info() {
+  $blocks['akm_artefact_search_box'] = array(
+    'info' => t('Artefact Search Box'),
+  );
+  return $blocks;
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function akm_extras_block_view($delta = '') {
+  $block = array();
+
+  switch ($delta) {
+    case 'akm_artefact_search_box':
+      $block['content'] = drupal_get_form('akm_extras_search_block_form');
+      break;
+  }
+  return $block;
+}
+
+function akm_extras_search_block_form($form, &$form_state){
+  $form = array();
+  $form['#attached']['js'] = array(
+    drupal_get_path('module', 'akm_extras') . '/js/akm_extras.js',
+  );
+  $form['keys'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Search'),
+    '#default_value' => t('Search Aga Khan Museum collections'),
+    '#size' => 35,
+    '#maxlength' => 255,
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Go'),
+  );
+  return $form;
+}
+
+function akm_extras_search_block_form_submit($form, &$form_state){
+  drupal_goto('collections/artifact-browser/' . $form_state['values']['keys']);
+}
+
+function akm_extras_form_search_form_alter(&$form) {
+  unset($form['#action']);
+  $form['#submit'][] = 'akm_extras_collection_search_submit';
+}
+
+function akm_extras_collection_search_submit($form, $form_state) {
+  drupal_goto('collections/artifact-browser/'. $form_state['values']['keys']);
+}
+
+/**
+ * Implements hook_permission().
+ */
+function akm_extras_permission() {
+  $permissions['use workbench_moderation publications tab'] = array(
+    'title' => t('Use "Needs Publication" workbench tab')
+  );
+  return $permissions;
+}
+
+/**
+ * Limit the available inline image styles.
+ */
+function akm_extras_media_wysiwyg_allowed_view_modes_alter(&$view_modes, &$file) {
+  //dpm($view_modes);
+  // TODO: make this configurable? or at least a wildcard to match inline_* ?
+  $view_modes = array(
+    'inline_full_width' => array(
+      'label' => 'Inline full width',
+      'custom settings' => FALSE,
+    ),
+    'inline_half_width' => array(
+      'label' => 'Inline half width',
+      'custom settings' => FALSE,
+    ),
+    'inline_quarter_width' => array(
+      'label' => 'Inline quarter width',
+      'custom settings' => FALSE,
+    ),
+  );
+}
+
+/**
+ * Fill the Short Title field if it's empty.
+ */
+function akm_extras_node_presave($node) {
+  // if the Short Title field exists and is empty...
+  if (isset($node->field_short_title)) {
+    $st_field = field_get_items('node', $node, 'field_short_title');
+    if ($st_field == FALSE) {
+      // fill it with the Title field value
+      $node->field_short_title['und'][0]['value'] = $node->title;
+    }
+  }
+}
+
+/**
+ * Implementes hook_form_FORM_ID_alter().
+ *
+ * Changes the names of the image styles to be more descriptive.
+ */
+function akm_extras_form_imagecrop_style_selection_form_alter(&$form, &$form_state, &$form_id) {
+  $names_array = array(
+    'did_you_know_main' => 'Did You Know feature image (470x410)',
+    'collection_large' => 'Artefact main image (400x500)',
+    'collection_thumbnail' => 'Artefact sidebar thumbnails (50x50)',
+    'featured_collection' => 'Hub Page Featured Image (660x330)',
+    'featured_thumbnail' => 'Hub Page Grid Image (141x141)',
+    'inline_full_width' => 'Full Width Inline Image (710x533)',
+    'inline_half_width' => 'Half Width Inline Image (355x266)',
+    'inline_quarter_width' => 'Quarter Width Inline Image (177x133)',
+    'main_image' => 'Article Main Image (378x252)',
+    'gallery_large' => 'Gallery Main Image (960x720)',
+    'featured_content' => 'Front Page Slider Image (1680x1050)',
+    'thumbnail_cropped' => 'Did You Know Carousel Thumbnail (80x80)',
+    'main_image_vertical' => 'Article Main Image Vertical (252x378)',
+    'square_thumbnail' => 'Blog Listing Square Thumbnail (180x180)'
+  );
+
+  foreach($form['styles']['#options'] as $option) {
+    //$option_space = str_replace("_", " ", $option);
+    $new_option = $names_array[$option];
+    if ($new_option) {
+      $form['styles']['#options'][$option] = $new_option;
+    }
+  }
+}
+
+/**
+ * Implements hook_apachesolr_query_alter().
+ */
+function akm_extras_apachesolr_query_alter($query) {
+  $query->addFilter('hash', apachesolr_site_hash());
+}
+
+/**
+ * Implements hook_views_query_alter().
+ */
+function akm_extras_views_query_alter(&$view, &$query) {
+  if ($view->name == 'collections') {
+    $sort_field = '_random_seed';
+    foreach ($query->field_aliases as $aliases_key => $aliases) {
+      if ($sort_code = array_search($sort_field, $aliases)) {
+        unset($query->field_aliases[$aliases_key][$sort_code]);
+        if (empty($query->field_aliases[$aliases_key])) {
+          unset($query->field_aliases[$aliases_key]);
+        }
+        unset($query->fields[$sort_field]);
+        $query->orderby[0]['field'] = $sort_code;
+        break;
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_element_info_alter().
+ * Remove the default 128 character maxlength on all textfields.
+ * If a custom maxlength was set on the field, it will still be used.
+ */
+function akm_extras_element_info_alter(&$type) {
+  unset($type['textfield']['#maxlength']);
+}

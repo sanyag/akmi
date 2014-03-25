@@ -1,0 +1,42 @@
+<?php
+
+/**
+ * @file
+ * Sets up the schema for Webform Dynamic Recipients
+ */
+
+/**
+ * Implements hook_schema().
+ * Sets up a table for storing dynamic email addresses tied to webform components
+ */
+function webform_dynamic_recipients_schema() {
+
+  $schema['webform_dynamic_recipients'] = array(
+    'description' => '',
+    'fields' => array(
+      'nid' => array(
+        'description' => 'The primary identifier for a node.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'foreign keys' => array(
+          'node' => array('nid' => 'nid'),
+        )
+      ),
+      'cid' => array(
+        'description' => 'The identifier for this component within this node, starts at 0 for each node.',
+        'type' => 'int',
+        'size' => 'small',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'recipients' => array(
+        'description' => 'The list of recipients',
+        'type' => 'text',
+      ),
+    ),
+  );
+
+  return $schema;
+}

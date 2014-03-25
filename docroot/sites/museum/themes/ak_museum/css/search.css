@@ -1,0 +1,246 @@
+/* Background Colors */
+/* Font/Copy Colors */
+body.page-search-site #page-title,
+body.page-collections-artefact-browser #page-title {
+  height: auto;
+}
+body.page-search-site #block-system-main h2,
+body.page-collections-artefact-browser #block-system-main h2 {
+  margin-top: 20px;
+}
+body.page-search-site #block-system-main .search-results,
+body.page-collections-artefact-browser #block-system-main .search-results {
+  list-style: none;
+}
+body.page-search-site #block-system-main .search-results .group-left,
+body.page-collections-artefact-browser #block-system-main .search-results .group-left {
+  width: 529px;
+  margin-right: 30px;
+}
+body.page-search-site #block-system-main .search-results .group-right,
+body.page-collections-artefact-browser #block-system-main .search-results .group-right {
+  width: 141px;
+}
+body.page-search-site #block-system-main .search-results li.search-result,
+body.page-collections-artefact-browser #block-system-main .search-results li.search-result {
+  border-bottom: 1px solid #0074aa;
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+}
+body.page-search-site .block-facetapi,
+body.page-collections-artefact-browser .block-facetapi {
+  margin-bottom: 15px;
+}
+body.page-search-site .block-facetapi h2,
+body.page-collections-artefact-browser .block-facetapi h2 {
+  font-size: 14px;
+}
+body.page-search-site .block-facetapi select,
+body.page-collections-artefact-browser .block-facetapi select {
+  width: 215px;
+}
+body.page-search-site .region-sidebar-second-inner,
+body.page-collections-artefact-browser .region-sidebar-second-inner {
+  margin-top: 115px;
+}
+body.page-search-site #zone-content form#search-form ul,
+body.page-collections-artefact-browser #zone-content form#search-form ul {
+  margin: 15px 0 15px 20px;
+}
+body.page-search-site #zone-content form#search-form input#edit-submit,
+body.page-collections-artefact-browser #zone-content form#search-form input#edit-submit {
+  -webkit-appearance: button;
+  -webkit-border-radius: 0;
+  -webkit-background-clip: border-box;
+  -moz-border-radius: 0;
+  -moz-background-clip: border-box;
+  background-clip: border-box;
+  border-radius: 0;
+  background: #0074aa;
+  color: #fff !important;
+  font-weight: normal;
+  cursor: pointer;
+  outline: 0;
+}
+body.page-search-site #zone-content form#search-form input#edit-submit:hover,
+body.page-collections-artefact-browser #zone-content form#search-form input#edit-submit:hover {
+  background: #000000;
+  color: #FFF;
+}
+body.page-search-site #zone-content ul.pager,
+body.page-collections-artefact-browser #zone-content ul.pager {
+  background: transparent;
+  border: 2px solid #0074aa;
+  border-radius: 0;
+  -webkit-border-radius: 0;
+  -moz-border-radius: 0;
+  padding: 5px;
+}
+body.page-search-site #zone-content ul.pager li.pager-first,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-first,
+body.page-search-site #zone-content ul.pager li.pager-first a,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-first a,
+body.page-search-site #zone-content ul.pager li.pager-previous,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-previous,
+body.page-search-site #zone-content ul.pager li.pager-previous a,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-previous a,
+body.page-search-site #zone-content ul.pager li.pager-next,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-next,
+body.page-search-site #zone-content ul.pager li.pager-next a,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-next a,
+body.page-search-site #zone-content ul.pager li.pager-last,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-last,
+body.page-search-site #zone-content ul.pager li.pager-last a,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-last a,
+body.page-search-site #zone-content ul.pager li.pager-item,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-item,
+body.page-search-site #zone-content ul.pager li.pager-item a,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-item a {
+  background: transparent;
+  color: #57585a;
+  border: none;
+  border-radius: 0;
+  -webkit-border-radius: 0;
+  -moz-border-radius: 0;
+}
+body.page-search-site #zone-content ul.pager li.pager-first:hover,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-first:hover,
+body.page-search-site #zone-content ul.pager li.pager-first a:hover,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-first a:hover,
+body.page-search-site #zone-content ul.pager li.pager-previous:hover,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-previous:hover,
+body.page-search-site #zone-content ul.pager li.pager-previous a:hover,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-previous a:hover,
+body.page-search-site #zone-content ul.pager li.pager-next:hover,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-next:hover,
+body.page-search-site #zone-content ul.pager li.pager-next a:hover,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-next a:hover,
+body.page-search-site #zone-content ul.pager li.pager-last:hover,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-last:hover,
+body.page-search-site #zone-content ul.pager li.pager-last a:hover,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-last a:hover,
+body.page-search-site #zone-content ul.pager li.pager-item:hover,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-item:hover,
+body.page-search-site #zone-content ul.pager li.pager-item a:hover,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-item a:hover {
+  background: #0074aa;
+  color: #fff;
+  border: none;
+  border-radius: 0;
+  -webkit-border-radius: 0;
+  -moz-border-radius: 0;
+}
+body.page-search-site #zone-content ul.pager li.pager-item,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-item {
+  border-right: 1px solid #FFF;
+  border-left: 1px solid #0074aa;
+}
+body.page-search-site #zone-content ul.pager li.pager-item:hover,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-item:hover {
+  border-right: 1px solid #FFF;
+  border-left: 1px solid #FFF;
+}
+body.page-search-site #zone-content ul.pager li.pager-current,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-current {
+  background: #0074aa;
+  color: #fff;
+  border: none;
+  border-radius: 0;
+  -webkit-border-radius: 0;
+  -moz-border-radius: 0;
+}
+body.page-search-site #zone-content ul.pager li.pager-previous a,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-previous a {
+  width: 75px;
+}
+body.page-search-site #zone-content ul.pager li.pager-last,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-last {
+  top: 5px;
+  right: 5px;
+}
+body.page-search-site #zone-content ul.pager li.pager-next,
+body.page-collections-artefact-browser #zone-content ul.pager li.pager-next {
+  top: 5px;
+  right: 55px;
+}
+body.page-search-site .region-sidebar-second-inner {
+  margin-top: 90px;
+}
+#zone-content ul.pager {
+  background: transparent;
+  border: 2px solid #0074aa;
+  border-radius: 0;
+  -webkit-border-radius: 0;
+  -moz-border-radius: 0;
+  padding: 5px;
+}
+#zone-content ul.pager li.pager-first,
+#zone-content ul.pager li.pager-first a,
+#zone-content ul.pager li.pager-previous,
+#zone-content ul.pager li.pager-previous a,
+#zone-content ul.pager li.pager-next,
+#zone-content ul.pager li.pager-next a,
+#zone-content ul.pager li.pager-last,
+#zone-content ul.pager li.pager-last a,
+#zone-content ul.pager li.pager-item,
+#zone-content ul.pager li.pager-item a {
+  background: transparent;
+  color: #57585a;
+  border: none;
+  border-radius: 0;
+  -webkit-border-radius: 0;
+  -moz-border-radius: 0;
+}
+#zone-content ul.pager li.pager-first:hover,
+#zone-content ul.pager li.pager-first a:hover,
+#zone-content ul.pager li.pager-previous:hover,
+#zone-content ul.pager li.pager-previous a:hover,
+#zone-content ul.pager li.pager-next:hover,
+#zone-content ul.pager li.pager-next a:hover,
+#zone-content ul.pager li.pager-last:hover,
+#zone-content ul.pager li.pager-last a:hover,
+#zone-content ul.pager li.pager-item:hover,
+#zone-content ul.pager li.pager-item a:hover {
+  background: #0074aa;
+  color: #fff;
+  border: none;
+  border-radius: 0;
+  -webkit-border-radius: 0;
+  -moz-border-radius: 0;
+}
+#zone-content ul.pager li.pager-item {
+  border-right: 1px solid #FFF;
+  border-left: 1px solid #0074aa;
+}
+#zone-content ul.pager li.pager-item:hover {
+  border-right: 1px solid #FFF;
+  border-left: 1px solid #FFF;
+}
+#zone-content ul.pager li.pager-current {
+  background: #0074aa;
+  color: #fff;
+  border: none;
+  border-radius: 0;
+  -webkit-border-radius: 0;
+  -moz-border-radius: 0;
+}
+#zone-content ul.pager li.pager-previous a {
+  width: 75px;
+}
+#zone-content ul.pager li.pager-last {
+  top: 5px;
+  right: 5px;
+}
+#zone-content ul.pager li.pager-next {
+  top: 5px;
+  right: 55px;
+}
+.node-hub-page.view-mode-search_result {
+  height: auto !important;
+  margin: 0 !important;
+  background: none;
+}
+.node-hub-page.view-mode-search_result .group-right {
+  height: auto;
+  padding: 0;
+}

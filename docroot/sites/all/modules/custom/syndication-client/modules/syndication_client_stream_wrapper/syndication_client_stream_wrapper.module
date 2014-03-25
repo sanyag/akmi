@@ -1,0 +1,220 @@
+<?php
+
+
+/**
+ * Implementation of hook_stream_wrappers().
+ */
+function syndication_client_stream_wrapper_stream_wrappers() {
+  return array(
+    'syndication' => array(
+      'name' => t('Syndication Stream Wrapper'),
+      'class' => 'SyndicationStreamWrapper',
+      'description' => t('Provides read-only paths to Syndication Server Files.'),
+      'type' => STREAM_WRAPPERS_READ_VISIBLE,
+    ),
+  );
+}
+
+
+/**
+ * Implements hook_preprocess_image().
+ *
+ * The idea here is to create a local copy of the external image if an image
+ * style is applied and then generate the image
+ *
+ */
+function syndication_client_stream_wrapper_preprocess_image(&$variables) {
+
+  // Media Crop Support
+  // ** media crop does not natively support the syndication:// scheme so we have
+  // to futz with it here **
+
+  if(module_exists('media_crop')) {
+    if(preg_match("/syndication:\/\/media_crop/",$variables['path'])) {
+      // assuming syndication server is running on a public file scheme
+      // @todo - get file scheme settings from server and save to var then replace public here
+      $variables['path'] = str_replace("/syndication/", "/public/", $variables['path']);
+    }
+  }
+
+
+  // Default handling
+
+  $regex = "#^" . variable_get('syndication_server_url','') . "/#";
+
+  // if image is coming from the syndication server and it has an image style
+  // we need to create a local cached version using imagecache_external module
+  if($match = preg_match($regex, $variables['path']))
+  {
+    if (!empty($variables['style_name']))
+    {
+
+      $path = syndication_client_stream_wrapper_generate_path($variables['path'], $variables['style_name']);
+      $path = image_style_url($variables['style_name'], $path);
+
+      $variables['path'] = $path;
+
+    }
+  }
+}
+
+
+/**
+ * Handle Media field selectors
+ * Thumbnails :)
+ **/
+
+function syndication_client_preprocess_media_thumbnail(&$variables) {
+  // @TODO: allow thumbnail generation of the mediafield type
+}
+
+
+/**
+ * *****************************************************************************
+ *  Taken and modified from imagecache external to handle proper file typing as
+ *  IIS 7.5 wont display just the hash file
+ *  @credit - Lee Rowlands
+ * *****************************************************************************
+ */
+
+
+/**
+ * Returns HTML for an image using a specific image style.
+ *
+ * @param $variables
+ *   An associative array containing:
+ *   - style_name: The name of the style to be used to alter the original image.
+ *   - path: The path of the image file relative to the Drupal files directory.
+ *     This function does not work with images outside the files directory nor
+ *     with remotely hosted images.
+ *   - alt: The alternative text for text-based browsers.
+ *   - title: The title text is displayed when the image is hovered in some
+ *     popular browsers.
+ *   - attributes: Associative array of attributes to be placed in the img tag.
+ *
+ * @ingroup themeable
+ */
+function theme_syndication_client_stream_wrapper_external($variables) {
+
+  if($variables['path'] = syndication_client_stream_wrapper_generate_path($variables['path'], $variables['style_name'])) {
+    return theme('image_style', $variables);
+  }
+}
+
+/**
+ * Util to generate a path to an image
+ * @param $url string the url to the image
+ * @param $preset imagecache preset
+ * @return string the url to the image
+ */
+function syndication_client_stream_wrapper_generate_path($url, $preset) {
+  // Create the extenal images directory and ensure it's writable.
+  $hash       = md5($url);
+  $scheme     = file_default_scheme();
+  $directory  = $scheme . '://imagecache/externals';
+
+  // Only valid file extensions
+  $exp        = explode(".", $url);
+  $ext        = array_pop($exp);
+
+  if(file_prepare_directory($directory, FILE_CREATE_DIRECTORY | FILE_MODIFY_PERMISSIONS)) {
+    if (file_exists($directory. '/' . $hash . "." . $ext)) {
+      return $directory. '/' . $hash . "." . $ext;
+    }
+
+    $file = syndication_client_stream_wrapper_fetch($url, $directory . '/' . $hash . "." . $ext);
+    if ($file) {
+      return $file->uri;
+    }
+  }
+  //we couldn't get the file
+  return FALSE;
+}
+
+/**
+ * Api function to fetch a url
+ * @param $url string url to fetch
+ */
+function syndication_client_stream_wrapper_fetch($url, $cachepath) {
+  //now we test it
+  if (!$url) {
+    return FALSE;
+  }
+  //extract hostname from url
+  $parsed_url = parse_url($url);
+  $host       = $parsed_url['host'];
+
+  $result = drupal_http_request($url);
+  $code   = floor($result->code / 100) * 100;
+  $types  = array('image/jpeg', 'image/png', 'image/gif');
+
+  if (isset($result->data) && $result->data && $code != 400 && $code != 500 && in_array($result->headers['content-type'], $types)) {
+
+    $extentions = array(
+      'image/jpeg' => '.jpg',
+      'image/png'  => '.png',
+      'image/gif'  => '.gif'
+    );
+
+    return file_save_data($result->data, $cachepath, FILE_EXISTS_REPLACE);
+
+  }
+  else {
+    //if we are unsuccessful then log a message in watchdog
+    watchdog('syndication_client_stream_wrapper', 'The image ' . $url . ' could not be retrieved');
+    return FALSE;
+  }
+}
+
+
+
+
+/**
+ * *****************************************************************************
+ * END RIP OFF IMAGECACHE EXTERNAL
+ * *****************************************************************************
+ */
+
+
+
+
+/**
+ * Defines files (syndication://) stream wrapper class.
+ */
+class SyndicationStreamWrapper extends DrupalPublicStreamWrapper {
+
+  /**
+  * Overrides getExternalUrl().
+  * Return the HTML URI of a public file.
+  */
+
+  public function getExternalUrl() {
+
+    $uri = $this->getUri();
+    $server_path = variable_get('syndication_server_url', '');
+    $server_file_system = variable_get('syndication_server_file_system', 'sites/default/files');
+
+    // Remove scheme and replace with server path
+    $regex = "#^syndication://#";
+    $uri = preg_replace($regex, $server_path . "/" . $server_file_system . "/" , $uri);
+
+    // Remove style
+    $regex2 = "#styles/.*/syndication/#";
+    $uri = preg_replace($regex2, "", $uri);
+
+    return $uri;
+    // return array('path' => $uri, 'attributes' => array());
+  }
+
+  /**
+  * Implements abstract public function getDirectoryPath()
+  */
+  public function getDirectoryPath() {
+   return '';
+  }
+
+
+
+
+}
+

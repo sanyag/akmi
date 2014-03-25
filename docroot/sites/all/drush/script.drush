@@ -1,0 +1,252 @@
+<?php
+
+function configure_environment($args) {
+
+}
+
+function image_path_rewrite() {
+  $query = db_select('file_managed', 'f')
+    ->fields('f', array('fid', 'uri'))
+    ->execute();
+
+  $files = array();
+  foreach ($query as $row) {
+    $files[$row->fid] = $row->uri;
+  }
+
+  foreach ($files as $fid => $uri) {
+    $files[$fid] = str_replace('\\', "/", $uri);
+  }
+
+  print_r($files);
+
+  foreach ($files as $fid => $uri) {
+    $query2 = db_update('file_managed')
+      ->fields(array(
+        'uri' => $uri,
+      ))
+      ->condition('fid', $fid, "=")
+      ->execute();
+  }
+
+}
+
+function publication_short_title_rewrite() {
+  // Get publications from the database
+  $entity_name = 'publication';
+  drush_log("starting on {$entity_name} nodes", "warning");
+
+  $query_2 = db_select('node', 'n')
+    ->fields('n', array('nid', 'vid'))
+    ->condition('n.type', $entity_name);
+
+  $result_2 = $query_2->execute();
+
+  $total_count = $result_2->rowCount();
+  $count = 0;
+  $count_already_done = 0;
+  drush_log("found {$total_count} nodes of type " . $entity_name, "success");
+
+  // Cycle through each returned result
+  foreach($result_2 as $row) {
+    $count++;
+
+    // Load the node and get the entity translation handler
+    $node = node_load($row->nid, $row->vid);
+    field_attach_load('node', array($node->nid => $node));
+    $handler = entity_translation_get_handler('node', $node);
+    $translation = array(
+      'translate' => 0,
+      'status' => 1,
+      'source' => $node->language,
+    );
+    $tr = $node->translations;
+
+    if ($node->language != "und") {
+      // if it's using the field_title field, use that value
+      foreach ($tr->data as $lang => $arr) {
+        $values = array();
+        if ($lang != $tr->original) {
+          if (!empty($node->field_short_title) && !empty($node->field_short_title[$lang])) {
+            $count_already_done++;
+            continue;
+          }
+
+          $translation['language'] = $lang;
+          $values['field_short_title'][$lang][0]['value'] = $node->title_field[$lang][0]['value'];
+          if (is_null($node->field_publication_file[$lang][0])) {
+            unset($node->field_publication_file[$lang]);
+          }
+          if (is_null($node->field_publication_image[$lang][0])) {
+            unset($node->field_publication_image[$lang]);
+          }
+          $handler->setTranslation($translation, $values);
+        }
+        else {
+          if (!empty($node->field_short_title) && !empty($node->field_short_title[$lang])) {
+            $count_already_done++;
+            continue;
+          }
+          $node->field_short_title[$tr->original][0]['value'] = $node->title_field[$tr->original][0]['value'];
+          if (is_null($node->field_publication_file[$tr->original][0])) {
+            unset($node->field_publication_file[$tr->original]);
+          }
+          if (is_null($node->field_publication_image[$tr->original][0])) {
+            unset($node->field_publication_image[$tr->original]);
+          }
+        }
+        //node_save($node);
+      }
+        node_save($node);
+        //field_attach_presave('node', $node);
+        //field_attach_update('node', $node);
+    } // if
+    drush_log("node $count done", "success");
+  } // foreach(result_2)
+  drush_log("$count_already_done nodes not needed", "warning");
+}
+
+/**
+ * Finds any empty short_title fields and rewrites them with the title field.
+ */
+function short_title_rewrite() {
+  // Get all entities using the short_title field.
+  $query = db_select('field_config_instance', 'f')
+    ->fields('f', array('field_name', 'bundle'))
+    ->condition('f.field_name', 'field_short_title');
+  $result = $query->execute();
+
+  // Get the entity names
+  $entity_names = array();
+  foreach ($result as $row) {
+    if ($row->bundle != 'article') {
+      $entity_names[] = $row->bundle;
+    }
+  }
+  print_r($entity_names);
+
+  foreach($entity_names as $entity_name) {
+    drush_log("starting on $entity_name nodes", "warning");
+
+    $query_2 = db_select('node', 'n')
+      ->fields('n', array('nid', 'vid'))
+      ->condition('n.type', $entity_name);
+
+    $result_2 = $query_2->execute();
+
+    $total_count = $result_2->rowCount();
+    $count = 0;
+    drush_log("found {$total_count} nodes of type " . $entity_name, "success");
+    //$nodes = array();
+
+    foreach($result_2 as $row) {
+      $count++;
+      $node = node_load($row->nid, $row->vid);
+      field_attach_load('node', array($node->nid => $node));
+      $handler = entity_translation_get_handler('node', $node);
+      //$nodes[] = $node;
+      $translation = array(
+        'translate' => 0,
+        'status' => 1,
+        'source' => $node->language,
+      );
+      $tr = $node->translations;
+
+      if (empty($node->field_short_title) && $node->language != "und") {
+        // if it's using the field_title field, use that value
+        foreach ($tr->data as $lang => $arr) {
+          $values = array();
+          if ($lang != $tr->original) {
+            $translation['language'] = $lang;
+            $values['field_short_title'][$lang][0]['value'] = $node->title_field[$lang][0]['value'];
+            if ($entity_name == "article") {
+              if (is_null($node->field_article_img[$lang][0])) {
+                unset($node->field_article_img[$lang]);
+              }
+            }
+            $handler->setTranslation($translation, $values);
+          }
+          else {
+            $node->field_short_title[$tr->original][0]['value'] = $node->title_field[$tr->original][0]['value'];
+            if ($entity_name == "article") {
+              if (is_null($node->field_article_img[$tr->original][0])) {
+                unset($node->field_article_img[$tr->original]);
+              }
+            }
+          }
+          //node_save($node);
+        }
+          node_save($node);
+          //field_attach_presave('node', $node);
+          //field_attach_update('node', $node);
+      } // if
+      drush_log("node $count done", "success");
+    } // foreach(result_2)
+  }// foreach(entity_names as entity_name)
+
+}
+
+/*function short_title_node_fix() {
+  drush_log("starting on article node fix", "warning");
+  $query_2 = db_select('node', 'n')
+    ->fields('n', array('nid', 'vid'))
+    ->condition('n.type', 'article')
+    ->condition('n.nid', '3662', '>=');
+
+  $result_2 = $query_2->execute();
+
+  $total_count = $result_2->rowCount();
+  $count = 0;
+  drush_log("found {$total_count} nodes of type " . $entity_name, "success");
+  //$nodes = array();
+  foreach($result_2 as $row) {
+    $count++;
+    $node = node_load($row->nid, $row->vid);
+    //presave?
+    field_attach_load('node', array($node->nid => $node));
+    $handler = entity_translation_get_handler('node', $node);
+    //$nodes[] = $node;
+    $translation = array(
+      'translate' => 0,
+      'status' => 1,
+      'source' => $node->language,
+    );
+    $tr = $node->translations;
+    if (empty($node->field_short_title) && $node->language != "und") {
+      // if it's using the field_title field, use that value
+      foreach ($tr->data as $lang => $arr) {
+        $values = array();
+        if ($lang != $tr->original) {
+          $translation['language'] = $lang;
+          $values['field_short_title'][$lang][0]['value'] = $node->title_field[$lang][0]['value'];
+          $handler->setTranslation($translation, $values);
+        }
+        else {
+          drush_log("working with original value", "warning");
+          $node->field_short_title[$tr->original][0]['value'] = $node->title_field[$tr->original][0]['value'];
+        }
+        field_attach_update('node', $node);
+      }
+    } // if
+    drush_log("node $count done", "success");
+  } // foreach(result_2)
+}*/
+
+
+
+/**
+ * INITIALIZR
+ * Runs stuff
+ **/
+$args = drush_get_arguments();
+// setup
+configure_environment($args);
+
+if(function_exists($args[2])) {
+  $args[2]($args);
+  drush_log('completed running', 'ok');
+} else {
+  drush_log('Could not find drush script command', 'error');
+}
+
+?>

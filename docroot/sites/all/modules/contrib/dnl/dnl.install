@@ -1,0 +1,10 @@
+<?php
+
+/**
+ * Implements hook_install().
+ */
+
+function dnl_install() {
+  db_query("UPDATE {system} SET weight = 100 WHERE name = 'dnl'");
+  drupal_set_message('Weight dnl module was changed to 100');
+}

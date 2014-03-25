@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the AK Panel Variants feature.
+ */
+
+include_once 'ak_panel_variants.features.inc';

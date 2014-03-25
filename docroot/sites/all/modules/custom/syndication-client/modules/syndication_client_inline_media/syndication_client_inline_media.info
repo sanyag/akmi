@@ -1,0 +1,9 @@
+name = Syndication Client Inline Media
+description = Handles inline Media elements on syndicated nodes
+package = Syndication
+version = "7.x-1.0"
+core = 7.x
+files[] = syndication_client_inline_media.module
+dependencies[] = "syndication_client"
+dependencies[] = "syndication_client_stream_wrapper"
+dependencies[] = "media"

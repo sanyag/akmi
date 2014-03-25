@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the AK Museum Gallery feature.
+ */
+
+include_once 'ak_museum_gallery.features.inc';

@@ -1,0 +1,14 @@
+name = Syndication Server Services
+description = Syndication Server Services Feature [Endpoints]
+core = 7.x
+package = Syndication
+php = 5.2.4
+version = 7.x-1.0
+project = syndication_server_services
+dependencies[] = ctools
+dependencies[] = services
+features[ctools][] = services:services:3
+features[features_api][] = api:1
+features[services_endpoint][] = files
+features[services_endpoint][] = nodes
+features[services_endpoint][] = taxonomy

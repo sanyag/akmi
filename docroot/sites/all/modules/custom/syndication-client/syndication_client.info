@@ -1,0 +1,12 @@
+name = Syndication Client
+description = Syndication Client
+package = Syndication
+version = "7.x-1.0"
+core = 7.x
+dependencies[] = "services"
+dependencies[] = "ctools"
+dependencies[] = "syndication_client_stream_wrapper"
+files[] = syndication_client.module
+files[] = syndication_client.admin.inc
+files[] = syndication_client.install
+files[] = syndication_client.utility.inc

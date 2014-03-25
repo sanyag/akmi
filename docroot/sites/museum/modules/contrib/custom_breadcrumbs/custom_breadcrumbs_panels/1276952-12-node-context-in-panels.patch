@@ -1,0 +1,13 @@
+diff --git a/docroot/sites/museum/modules/contrib/custom_breadcrumbs/custom_breadcrumbs_panels/custom_breadcrumbs_panels.module b/docroot/sites/museum/modules/contrib/custom_breadcrumbs/custom_breadcrumbs_panels/custom_breadcrumbs_panels.module
+index d2d767a..5e9ad25 100644
+--- a/docroot/sites/museum/modules/contrib/custom_breadcrumbs/custom_breadcrumbs_panels/custom_breadcrumbs_panels.module
++++ b/docroot/sites/museum/modules/contrib/custom_breadcrumbs/custom_breadcrumbs_panels/custom_breadcrumbs_panels.module
+@@ -124,7 +124,7 @@ function custom_breadcrumbs_panels_ctools_render_alter($info, $page, $data) {
+       if ($breadcrumb = custom_breadcrumbs_select_breadcrumb($breadcrumbs, array('panel' => $info))) {
+         $objs = array('panel' => $info);
+         foreach ($contexts as $context) {
+-          if ($context->type == 'node') {
++          if (is_array($context->type) && (in_array('node', $context->type) || in_array('entity:node', $context->type)) && isset($context->data)) {
+             $objs['node'] = $context->data;
+           }
+         }

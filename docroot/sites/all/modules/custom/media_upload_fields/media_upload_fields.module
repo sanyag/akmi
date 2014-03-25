@@ -1,0 +1,56 @@
+<?php
+/**
+ * @file
+ *
+ * Simple module which injects file entity fields
+ * into the Media upload form on node form widgets
+ *
+ * author: Tom James (tom@imagexmedia.com)
+ */
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function media_upload_fields_form_media_add_upload_alter(&$form, &$form_state) {
+  //media type determines the fields shown from field settings
+  //no way of knowing media type before uploading so hope url param is ok
+  $file_types = $_GET['types'];
+
+  //show fields based on Media Type selected
+  if (!empty($file_types)) {
+    foreach ($file_types as $type) {
+      $file = media_upload_fields_file_object($type);
+      field_attach_form('file', $file, $form, $form_state);
+    }
+    $form['submit']['#weight'] = 10000;
+  }
+
+  $form['#submit'][] = 'media_upload_fields_form_media_add_upload_submit';
+}
+
+/**
+ * Custom submit handler for upload form
+ */
+function media_upload_fields_form_media_add_upload_submit($form, &$form_state) {
+  $fid = $form_state['redirect'][1]['query']['fid'];
+  $file = file_load($fid);
+  entity_form_submit_build_entity('file', $file, $form, $form_state);
+  file_save($file);
+}
+
+/**
+ * Returns an empty $file object for field_attach_form()
+ */
+function media_upload_fields_file_object($type) {
+  $file = new stdClass();
+  $file->type = $type;
+  $file->bundle = $type;
+  return $file;
+}
+
+/**
+ * Debug
+ */
+function print_rr($value) {
+  drupal_set_message('<pre>'. print_r($value, TRUE) .'</pre>');
+}

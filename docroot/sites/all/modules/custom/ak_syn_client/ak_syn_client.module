@@ -1,0 +1,282 @@
+<?php
+
+/**
+ * TODO:
+ * - collect emails about changed and deleted content
+ */
+
+
+/**
+ * Implements hook_form_system_theme_settings_alter().
+ *
+ * Hook into existing config form for options.
+ */
+function ak_syn_client_form_syndication_client_admin_config_form_alter(&$form, &$form_state, $form_id) {
+  // $form['#submit'][] = 'ak_syn_client_config_submit';
+  $form['akdn_settings'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('AKDN Settings'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  );
+  $form['akdn_settings']['ak_syn_speech_ct'] = array(
+    '#type' => 'select',
+    '#title' => t('Speech Content Type'),
+    '#description' => t('Select which content type defines a speech. Nodes of this type will be processed last in the syndication process.'),
+    '#default_value' => variable_get('ak_syn_speech_ct', array()),
+    '#options' => node_type_get_names()
+  );
+  $form['akdn_settings']['ak_syn_unpublish_new'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Set all new content to be unpublished.'),
+    '#default_value' => variable_get('ak_syn_unpublish_new', 1),
+  );
+  $form['akdn_settings']['ak_syn_unpublish_delete'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Set all content that is deleted on the server to be unpublished.'),
+    '#default_value' => variable_get('ak_syn_unpublish_delete', 1),
+  );
+
+  $form['akdn_settings']['notifications'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Notifications'),
+    '#collapsible' => FALSE,
+  );
+
+  $form['akdn_settings']['notifications']['ak_syn_email_recipients'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Email Addresses'),
+    '#description' => t('Enter the email addresses that should be notified about the changes to content. Seperate multiple email addresses with a comma (,).'),
+    '#default_value' => variable_get('ak_syn_email_recipients', ''),
+  );
+
+  $delay = array(
+    900 => '15min',
+    1800 => '30min',
+    2700 => '45min',
+    3600 => '60min'
+  );
+  $form['akdn_settings']['notifications']['ak_syn_email_delay'] = array(
+    '#type' => 'select',
+    '#title' => t('Email Delay'),
+    '#options' => $delay,
+    '#description' => t('Set the time delay for sending out the email notifications.'),
+    '#default_value' => variable_get('ak_syn_email_delay', 3600),
+  );
+
+}
+
+/**
+ * Custom submit function for syndication_client_admin_config_form().
+ * DEPRECATED.
+ */
+function ak_syn_client_config_submit($form, &$form_state) {
+  variable_set('ak_syn_speech_ct', $form_state['values']['ak_syn_speech']);
+  variable_set('ak_syn_unpublish_new', $form_state['values']['ak_syn_unpublish_new']);
+  variable_set('ak_syn_unpublish_delete', $form_state['values']['ak_syn_unpublish_delete']);
+  variable_set('ak_syn_email_new', $form_state['values']['ak_syn_email_new']);
+  variable_set('ak_syn_email_new_rec', $form_state['values']['ak_syn_email_new_rec']);
+  variable_set('ak_syn_email_update', $form_state['values']['ak_syn_email_update']);
+  variable_set('ak_syn_email_update_rec', $form_state['values']['ak_syn_email_update_rec']);
+  variable_set('ak_syn_email_delete', $form_state['values']['ak_syn_email_delete']);
+  variable_set('ak_syn_email_delete_rec', $form_state['values']['ak_syn_email_delete_rec']);
+}
+
+/**
+ * Implements HOOK_sc_node_result_alter().
+ *
+ * We do two things here:
+ * - Making sure that all speech nodes are put at the back of the processing order
+ */
+function ak_syn_client_sc_node_result_alter($result) {
+  $ct = variable_get('ak_syn_speech_ct', '');
+
+  // First process new content
+
+  $new_order = array();
+  foreach ($result['new'] as $node) {
+    // $node['status'] = $status;
+
+    if ($node['type'] == $ct) {
+      array_push($new_order, $node);
+    }
+    else {
+      array_unshift($new_order, $node);
+    }
+  }
+  $result['new'] = $new_order;
+
+  // Now the same for updated nodes
+  $new_order = array();
+  foreach ($result['update'] as $node) {
+    // $node['status'] = $status;
+
+    if ($node['type'] == $ct) {
+      array_push($new_order, $node);
+    }
+    else {
+      array_unshift($new_order, $node);
+    }
+  }
+  $result['update'] = $new_order;
+
+
+  return $result;
+}
+
+/**
+ * Control wether delted server nodes shoudl be unpublished.
+ */
+function ak_syn_client_sc_node_delete_alter($nodes) {
+  // Check if there is anything to process
+  if (!empty($nodes)) {
+    // Add the deleted nodes to the message queue
+    $message_queue = _ak_syn_client_create_mq();
+    foreach ($nodes as $nid) {
+      $node = node_load($nid);
+      $message_queue['delete'][$node->nid] = $node->title;
+    }
+    variable_set('ak_syn_client_message_queue', $message_queue);
+
+    // If enabled, just set the nodes status to 0 and return an empty array.
+    // This will avoid deletion.
+    if(variable_get('ak_syn_unpublish_delete', 1)) {
+      db_update('node')
+        ->fields(array(
+          'status' => 0
+        ))
+        ->condition('nid', $nodes, 'IN')
+        ->execute();
+      return array();
+    }
+    else {
+      return $nodes;
+    }
+  }
+  else {
+    return $nodes;
+  }
+}
+
+/**
+ * Implements HOOK_sc_postsave_node.
+ *
+ * Add nodes to a notification queue
+ * Unpublish new nodes
+ */
+function ak_syn_client_sc_postsave_node($node, $new) {
+  $message_queue = _ak_syn_client_create_mq();
+
+
+  // Check if the node is new
+  if($new) {
+    $message_queue['new'][$node->nid] = $node->title;
+    if(variable_get('ak_syn_unpublish_new', 0)) {
+      // Set the node to unpublished
+      db_update('node')
+        ->fields(array('status' => 0))
+        ->condition('nid', $node->nid)
+        ->execute();
+
+      db_update('node_revision')
+        ->fields(array('status' => 0))
+        ->condition('nid', $node->nid)
+        ->condition('vid', $node->vid)
+        ->execute();
+    }
+  }
+  else {
+    $message_queue['update'][$node->nid] = $node->title;
+  }
+
+  variable_set('ak_syn_client_message_queue', $message_queue);
+}
+
+/**
+ * Implements hook_cron().
+ *
+ * Once an hour check if there are messages in the queue and send them out if enabled.
+ */
+function ak_syn_client_cron() {
+  $delay = variable_get('ak_syn_email_delay', 3600);
+  $last = variable_get('ak_syn_client_notifications', 0);
+  $message_queue = variable_get('ak_syn_client_message_queue', array());
+  $recipients = variable_get('ak_syn_email_recipients', '');
+
+  if ($last < (time() - $delay) && !empty($message_queue) && !empty($recipients)){
+    $message = "Your site received the following updates from the syndication server:\n";
+    if (count($message_queue['new'])) {
+      $message .= "\nNEW CONTENT\n";
+      foreach ($message_queue['new'] as $nid => $title) {
+        $message .= $title . ' [ ' . url('node/' . $nid, array('absolute' => TRUE)) . " ]\n";
+      }
+    }
+    if (count($message_queue['update'])) {
+      $message .= "\nUPDATED CONTENT\n";
+      foreach ($message_queue['update'] as $nid => $title) {
+        $message .= $title . ' [ ' . url('node/' . $nid, array('absolute' => TRUE)) . " ]\n";
+      }
+    }
+    if (count($message_queue['delete'])) {
+      $message .= "\nREMOVED CONTENT\n";
+      foreach ($message_queue['delete'] as $nid => $title) {
+        $message .= $title . ' [ ' . url('node/' . $nid, array('absolute' => TRUE)) . " ]\n";
+      }
+    }
+
+    _ak_syn_client_notify($message, $recipients);
+    // Clean out the queue again
+    variable_set('ak_syn_client_message_queue', array());
+    variable_set('ak_syn_client_notifications', time());
+  }
+
+
+
+}
+
+function _ak_syn_client_notify($message_body, $recipients) {
+  // These value can remain empty.
+  $module = '';
+  $mail_token = '';
+
+  $from = variable_get('site_mail');
+  $message = array(
+    'id' => $module . '_' . $mail_token,
+    'to' => $recipients,
+    'subject' => "Updates to syndicated content on " . variable_get('site_name', ''),
+    'body' => array($message_body),
+    'headers' => array(
+      'From' => $from,
+      'Sender' => $from,
+      'Return-Path' => $from,
+    ),
+  );
+  $system = drupal_mail_system($module, $mail_token);
+
+  // The format function must be called before calling the mail function.
+  $message = $system->format($message);
+
+  if ($system->mail($message)) {
+    watchdog('AK Syndication', 'Adminstrator notification sent.', array(), WATCHDOG_NOTICE);
+  }
+  else {
+    watchdog('AK Syndication', 'Unable to send adminstrator notification.', array(), WATCHDOG_ERROR);
+  }
+}
+
+/**
+ * Helper function to generate an empty message queue.
+ */
+function _ak_syn_client_create_mq(){
+  $message_queue = variable_get('ak_syn_client_message_queue', array());
+  // If the queue is empty create the new shell
+  if (empty($message_queue)) {
+    $message_queue = array(
+      'new' => array(),
+      'update' => array(),
+      'delete' => array(),
+    );
+  }
+  return $message_queue;
+}
+

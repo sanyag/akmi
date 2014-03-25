@@ -1,0 +1,132 @@
+<?php
+
+/**
+ * Hook into the presave function and run through the raw text for inline media
+ * elements. Check to see if there is a local file mapping if not request and
+ * save the file from the server then map the fid back to the inline token
+ *
+ *
+ * @param $node
+ *        The Node Object that is being saved
+ **/
+
+function syndication_client_inline_media_sc_presave_node($node) {
+
+  // Start off by getting reference fields
+  $q = db_select('field_config', 'fc')
+        ->fields('fc',array('id','field_name'))
+        ->condition('type','text_long')
+        ->condition('active',1)
+        ->execute();
+
+  $field_names = array();
+  while($a = $q->fetchAssoc()) {
+    $field_names[$a['id']] = $a['field_name'];
+  }
+
+  // Always add body
+  $field_names[] = 'body';
+
+  /*   Loop through the fields on the node for textarea fields and then parse them
+   *   for media tokens
+   **/
+
+  foreach($field_names as $id => $field_name) {
+    if(isset($node->$field_name)) {
+
+      foreach($node->$field_name as $lang => $ar) {
+        foreach($ar as $k => $v) {
+          // $node->{$field_name}[$lang][$k]['value'] = $v['safe_value'];
+
+          // FOR VALUE AND SUMMARY
+          if(isset($v['value'])) {
+            $node->{$field_name}[$lang][$k]['value'] = _filter_media_fids($v['value']);
+          }
+
+          if(isset($v['summary'])) {
+            $node->{$field_name}[$lang][$k]['summary'] = _filter_media_fids($v['summary']);
+          }
+
+        }
+      }
+
+    }
+  }
+
+  return $node;
+}
+
+
+/**
+ * Runs through a string of text and looks to replace the file id with a mapped
+ * local version. If the file doesn't exist request it from the server
+ * @param string $text
+ *        The raw field string to look for media tokens in
+ *
+ * @return string
+ *         The Updated string
+ */
+
+function _filter_media_fids($text) {
+  ctools_include('syndication_client.utility', 'syndication_client', 'inc');
+
+  if(empty($text)) { return; }
+
+  $matches = array();
+  $patterns = array();
+  preg_match_all("/\[\[.*?\]\]/s", $text, $matches);
+
+  foreach($matches[0] as $k => $match) {
+
+    if (!is_string($match)) {
+      continue;
+    }
+
+    // Strip out markup and turn to object!
+    $match = str_replace("[[", "", $match);
+    $match = str_replace("]]", "", $match);
+
+    $media = drupal_json_decode($match);
+
+    $fid = $media['fid'];
+    $file = _syndication_client_lookup_remote_file_map($fid);
+
+    if(is_object($file)){
+      $media['fid'] = $file->fid;
+    }
+    else {
+      // Didnt find a file map locally request the file from the server
+      $file = _syndication_client_get_remote_file($fid);
+
+      // if we do not get a file just carry on
+      if(!$file) {
+        watchdog('syndication_client_inline_media', 'Could not find file with server FID ' . $fid, array(), WATCHDOG_INFO);
+        continue;
+      }
+
+      // Cast from response
+      syndication_client_save_remote_file($file);
+
+      $file = (object)$file;
+      $media['fid'] = $file->fid;
+
+    }
+
+    $markup = drupal_json_encode($media);
+    $text = str_replace($match, $markup, $text);
+
+  }
+
+  return $text;
+}
+
+
+
+
+
+
+
+
+
+
+

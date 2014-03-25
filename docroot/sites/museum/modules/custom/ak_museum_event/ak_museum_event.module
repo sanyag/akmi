@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the AK Museum Event feature.
+ */
+
+include_once 'ak_museum_event.features.inc';

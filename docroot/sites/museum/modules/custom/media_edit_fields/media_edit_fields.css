@@ -1,0 +1,5 @@
+@CHARSET "UTF-8";
+#media-browser-page {background:#fff;padding-top:20px;padding:20px;}
+#media-browser-page label {float:left;display:block;width:120px;margin-top:5px;}
+#media-browser-page img {float:left;margin-right:10px;border:1px solid #ccc;padding:6px;width:100px;}
+#media-browser-page .edit-submit {float:right;margin-right:20px;}

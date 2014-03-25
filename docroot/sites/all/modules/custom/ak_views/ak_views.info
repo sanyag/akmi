@@ -1,0 +1,14 @@
+name = AK Views
+core = 7.x
+package = AKDN.org
+php = 5.2.4
+version = 7.x-2.37
+project = ak_views
+dependencies[] = ctools
+dependencies[] = views
+features[ctools][] = views:views_default:3.0
+features[features_api][] = api:1
+features[views_view][] = akdn_tweets
+features[views_view][] = press_center
+features[views_view][] = project_pages
+features[views_view][] = projects_press_centre

@@ -1,0 +1,2140 @@
+<?php
+/**
+ * Syndication client Module
+ * Developed @ImageX Media
+ * Authors:
+ *          Shea McKinney - sherakama
+ *          Ben Koether - bkoether
+ *
+ * This module provides additional services and interfaces for use in
+ * Syndicating content, vocabularies, and users
+ *
+ *
+ * @todo:::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+ *
+ * Add hook to allow for adding endpoints
+ *
+ * :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+ *
+ * INVOKED FUNCTIONS [so you can hook in!]
+ * -------------------------------------------------------------
+ * 1. sc_missing_reference  | Allows for additional handling of missing references
+ * 2. sc_presave_node       | Allows outside modules to alter the node before saving
+ * 3. sc_postsave_node      | Allows outside modules to retreive data about the saved node
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ **/
+
+DEFINE('SC_DEBUG',TRUE); // DEBUG ON OR OFF
+
+/**
+ * Implementation of hook_menu().
+ */
+function syndication_client_menu() {
+  $items = array();
+
+$items['admin/config/syndication-client'] = array(
+    'title' => 'Syndication Client Settings',
+    'description' => 'The description of the menu item. It is used as title attribute and on the administration overview page.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('syndication_client_admin_config_form'),
+    'file' => 'inc/syndication_client.admin.inc',
+    'access arguments' => array('administer syndication_client'),
+  );
+  $items['admin/config/syndication-client/config'] = array(
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'title' => 'Settings',
+    'weight' => -1,
+  );
+
+  /* API config page */
+  $items['admin/config/syndication-client/api'] = array(
+    'title' => 'API Settings',
+    'description' => 'The description of the menu item. It is used as title attribute and on the administration overview page.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('syndication_client_admin_api_form'),
+    'file' => 'inc/syndication_client.admin.inc',
+    'access arguments' => array('administer syndication_client'),
+    'type' => MENU_LOCAL_TASK,
+  );
+
+
+
+  /* Debug Page */
+  $items['syndication/client/debug'] = array(
+    'title' => 'Debug / Test Page',
+    'description' => 'Simple Debug and/or Testing page',
+    'page callback' => 'syndication_client_debuggery',
+    'access arguments' => array('access content'),
+  );
+
+
+
+
+  return $items;
+}
+
+
+/**
+ * Implementation of hook_perm().
+ */
+function syndication_client_perm() {
+  return array('administer syndication_client');
+}
+
+
+
+
+/**
+ * A simple debug or test page for use during development
+ *  @return HTML
+ **/
+
+function syndication_client_debuggery() {
+  $output = '';
+
+  // syndication_client_sync_taxonomy();
+  // _syndication_client_repair_broken_term_references();
+  // syndication_client_sync_nodes(0);
+  // _syndication_client_repair_broken_node_references();
+
+  // syndication_client_sync_nodes(1342897546);
+  // 1342897546
+  //
+  //
+  syndication_client_cron();
+
+
+  return $output;
+}
+
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function syndication_client_form_node_type_form_alter(&$form, $form_state) {
+  $form['#submit'][] = 'syndication_client_settings_submit';
+  $type = $form['#node_type'];
+  $form['syndication'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Syndication options'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#group' => 'additional_settings',
+  );
+  $form['syndication']['syndication_enable'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Enable syndication for this content type.'),
+    '#default_value' => variable_get('syndication_enable_' . $type->type, 0),
+  );
+
+  $form['syndication']['syndication_map'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Override fields.'),
+    '#description' => '<b>' . t('Experts Only!') . '</b> ' .t('Map local fields for this content type to match up with the structure on the syndication server.'),
+    '#default_value' => variable_get('syndication_map_' . $type->type, 0),
+    '#states' => array(
+      'visible' => array(
+        ':input[name=syndication_enable]' => array('checked' => TRUE),
+      )
+    )
+  );
+
+  $fields = field_info_instances('node', $type->type);
+  $form['syndication']['syndication_map_override'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Field Mapping'),
+    '#collapsible' => TRUE,
+    '#collapsed' => !variable_get('syndication_map_' . $type->type, 0),
+    '#tree' => TRUE,
+    '#states' => array(
+      'visible' => array(
+        ':input[name=syndication_map]' => array('checked' => TRUE),
+        ':input[name=syndication_enable]' => array('checked' => TRUE),
+      )
+    )
+  );
+
+  $defaults = variable_get('syndication_map_override_' . $type->type, array());
+  $form['syndication']['syndication_map_override']['identifier'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Content type ID'),
+    '#description' => t('The machine name of the content type on the server.'),
+    '#size' => 40,
+    '#maxlength' => 255,
+    '#default_value' => isset($defaults['identifier']) ? $defaults['identifier'] : '',
+  );
+
+  foreach ($fields as $field) {
+    $form['syndication']['syndication_map_override']['syndication_fm_' . $field['field_name']] = array(
+      '#type' => 'textfield',
+      '#title' => $field['label'] . ' [' . $field['field_name'] . ']',
+      '#description' => t('The machine name of the field on the server.'),
+      '#size' => 40,
+      '#maxlength' => 255,
+      '#default_value' => isset($defaults['syndication_fm_' . $field['field_name']]) ? $defaults['syndication_fm_' . $field['field_name']] : '',
+    );
+  }
+}
+
+function syndication_client_settings_submit(&$form, $form_state) {
+  $values = $form_state['values'];
+  variable_set('syndication_map_override_' . $values['type'], $values['syndication_map_override']);
+}
+
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * The make request function for quick calls to the syndication server
+ * @param - $params | array of params
+ *  what    | what endpoint are we connecting to eg: 'syndication_node', 'syndication_taxonomy'
+ *  action  | The action to perform (defaults to none for index)
+ *  args    | an array of arguments that are passed along with the request
+ *
+ *    content_type - The content type to get
+ *    limit - the amount of items to return
+ *    date_min - the minimum date
+ *    date_max - the maximum date
+ *    date_select - what field to select min/max dates on [created/changed]
+ *    sort - SQL sort string (ASC/DESC/RAND)
+ *    sort_on - What field to sort on eg: [created/changed]
+ *
+ *
+ * @return - Decoded server response or false if error
+ **/
+
+function syndication_client_make_request($params = array()) {
+
+  $path = variable_get('syndication_server_url','');
+  $type = $params['what'];
+  $action = (!empty($params['action'])) ? $params['action'] : '';
+  $args = (!empty($params['args'])) ? $params['args'] : array();
+
+  // Key Keys for request
+  if(!isset($args['pubkey'])) {
+    $keys = variable_get('syndication_client_keys', array());
+    $public_key = $keys['client_public'];
+    $args['pubkey'] = $public_key;
+  }
+
+  // Map the endpoint to the content requested
+  $ep = _syndication_client_request_endpoint_mapping($type);
+  if(!$ep){ return false; }
+
+  // Build the path string
+  $request_url = $path . "/" . $ep . "/" . $type;
+
+  // Apply action option
+  if($action) {
+    $request_url .= "/" . $action;
+  }
+
+  // ALWAYS JSON :)
+  $request_url .= ".json";
+
+  // OPTIONS
+  $options = array(
+    'headers' => array(
+      'Content-Type' => 'application/x-www-form-urlencoded',
+      'Referer' => variable_get('syndication_client_domain', 'http://'.$_SERVER['SERVER_NAME']), // used to sign the key with
+    ),
+    'timeout' => variable_get('syndication_request_timeout',30)
+  );
+  $options += _syndication_client_build_request_options($request_url, $action, $args);
+
+
+  // FIRE OFF REQUEST
+  $response = drupal_http_request($request_url, $options);
+
+  // DEBUG
+  if(SC_DEBUG && module_exists('devel')) {
+    dpm($request_url);
+    dpm($response);
+  }
+
+  // IF OK SEND BACK DATA
+  if($response->code == '200' && $response->data) {
+    return drupal_json_decode($response->data);
+  }
+
+  // Something went wrong
+  watchdog('syndication_client', $response, array(), WATCHDOG_WARNING);
+  return false;
+}
+
+
+/**
+ * Shortcut function for syndication_client_make_request
+ *
+ **/
+
+function _mr($p) {
+  return syndication_client_make_request($p);
+}
+
+
+
+/**
+ * Endpoint mapping based on what action is being performed
+ * @param $type
+ * @return String | The endpoint for the server or false if none
+ *
+ **/
+
+function _syndication_client_request_endpoint_mapping($type) {
+  $ep = false;
+
+  switch($type) {
+
+    case "node":
+    case "content":
+    case "syndication_node":
+      $ep = variable_get("syndication_endpoint_content","syndication/content");
+    break;
+    case "syndication_taxonomy":
+    case "syndication_taxonomy_vocabulary":
+    case "syndication_taxonomy_term":
+      $ep = variable_get("syndication_endpoint_taxonomy","syndication/taxonomy");
+    break;
+    case "file":
+    case "syndication_file":
+    case "syndication_files":
+    case "syndication_media":
+      $ep = variable_get("syndication_endpoint_file","syndication/files");
+    break;
+  }
+
+  return $ep;
+}
+
+
+
+/**
+ * This function returns either GET or POST depending on what
+ * Action is being performed
+ *
+ * @param $request_URL | The request url string
+ * @param $action | Action to run (string)
+ * @param $args | an array of arguments to pass along with the request
+ * @return  array | drupal_http_request options
+ **/
+
+function _syndication_client_build_request_options(&$request_url, $action, $args) {
+  $data = http_build_query($args, '', '&');
+
+  // POST METHOD
+  switch($action) {
+    case "update":
+      $ret['method'] = "PUT";
+      $ret['data'] = $data;
+    break;
+    case "delete":
+      $ret['method'] = "DELETE";
+    break;
+    case "":
+    case "index":
+      $ret['method'] = "GET";
+    break;
+    default:
+      $ret['method'] = "POST";
+      $ret['data'] = $data;
+  }
+
+    // To handle getting of a single item
+  if(is_numeric($action)) {
+    $ret['method'] = "GET";
+    unset($ret['data']);
+  }
+
+
+  // IF NOT POST then no http request data. Add params to url
+  if($ret['method'] == "GET") {
+    $request_url .= "?" . $data;
+  }
+
+  return $ret;
+}
+
+
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// SAVE / UPDATE HANDLING [NODES]
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Bulk operation save nodes takes in an array of nodes and looks to create
+ * or update content on the local site while taking care of any id mapping or
+ * timezone handling items
+ *
+ * @param cache
+ *    The cache table in which the results are saved
+ *
+ * @param $new (optional)
+ *    A flag to indicate whether to skip update checking
+ *
+ *
+ * @return Array
+ *    An array of the updated node objects
+ *
+ **/
+
+function syndication_client_save_nodes($cache, $new = TRUE) {
+
+  $nodes = cache_get($cache);
+  $local_nodes = array();
+
+  foreach($nodes->data as $k => $v) {
+    $node = (object)$v;
+
+    if($new) {
+      $node->is_new = TRUE;
+    }
+
+    $local_nodes[$k] = syndication_client_save_node($node);
+    // If the node was saved then we remove it from the cache
+    if(isset($local_nodes[$k]->nid)) {
+      unset($nodes->data[$k]);
+      cache_set($cache, $nodes->data);
+    }
+  }
+
+  return $local_nodes;
+}
+
+
+/**
+ * Save a single node and perform any neccessary id mapping and
+ * timezone handling
+ *
+ * @param $node
+ *    A single node object
+ *
+ * @return Object
+ *    The saved node object
+ **/
+
+function syndication_client_save_node($node) {
+
+  $new_mapping = TRUE;  // Flag on wether to save a new mapping to db
+  $origin = clone($node); // Create copy of the server original
+
+  variable_set('syndication_last_changed_node_timestamp', $node->changed);
+
+  // We have to turn the transation array into an object if it is set
+  if(isset($node->translations)) {
+    $node->translations = (object)$node->translations;
+  }
+
+
+  // If there is a node ID and the new node flag has not been passed
+  // look up the mapping from the db before node save
+  if(!isset($node->is_new) && $node->nid) {
+    syndication_client_nid_map_update($node);
+    $new_mapping = FALSE;
+  }
+
+  // User mapping!
+  syndication_client_save_node_uid_map($node);
+
+  // Taxonomy Mapping!
+  syndication_client_save_node_taxonomy_map($node);
+
+  // Reference Mappings!
+  syndication_client_save_node_content_reference_map($node);
+
+  // File and Media Field Mappings
+  syndication_client_save_node_file_reference_map($node);
+
+  // Remove nid and vid if new
+  $new = FALSE;
+  if(!empty($node->is_new) && $node->is_new) {
+    unset($node->nid);
+    unset($node->vid);
+    $new = TRUE;
+  }
+
+
+  // Update the last changed node ts for the next request
+  variable_set('syndication_last_updated_node', $node->changed);
+
+  /** Allow other modules to hook into save **/
+  foreach (module_implements('sc_presave_node') as $module) {
+    $tmp = module_invoke($module, 'sc_presave_node', $node);
+    if($tmp) {
+      $node = $tmp;
+    }
+  }
+
+  // Actually do the save
+  node_save($node);
+
+  // If entity transaltion and pathauto is enabled we need to trigger an update in order to get the path for all transaltions.
+  if (module_exists('pathauto') && module_exists('entity_translation') && isset($node->translations->data)) {
+    foreach ($node->translations->data as $language) {
+      pathauto_node_update_alias($node, ($new ? 'insert' : 'update'), array('language' => $language['language']));
+    }
+  }
+
+  // Save mappings!
+  if($new_mapping) {
+    syndication_client_save_node_mapping($node, $origin);
+  }
+
+  /** Allow other modules to hook into the post save **/
+  module_invoke_all('sc_postsave_node', $node, $new);
+
+  return $node;
+}
+
+
+/**
+ * syndication_client_nid_map_update
+ * Updates the node object to map local nid from server nid
+ * adjusts the $node->nid to the local copy's
+ *
+ * @param $node
+ *    the node object
+ *
+ **/
+
+function syndication_client_nid_map_update(&$node) {
+
+  $q = db_select('sc_nodemap','sc')
+        ->fields('sc',array('nid_l','vid_l'))
+        ->range(0,1)
+        ->condition('sc.nid_s',$node->nid)
+        ->execute();
+
+  $result = $q->fetchAssoc();
+
+  if($result && is_numeric($result['nid_l'])) {
+    $node->nid = $result['nid_l'];
+    $node->vid = $result['vid_l'];
+  }
+
+}
+
+
+/**
+ * Saves the node mapping to the database from an original node to new node
+ * Must have run node_save on the $node param first
+ *
+ * @param $node
+ *    The new local node object
+ * @param $origin
+ *    The original node object from the server
+ *
+ * @return Boolean
+ *    Success on update
+ *
+ **/
+
+function syndication_client_save_node_mapping($node, $origin) {
+
+  $r = db_merge('sc_nodemap')
+        ->key(array('nid_s' => $origin->nid))
+        ->fields(array(
+          'nid_s' => $origin->nid,
+          'vid_s' => $origin->vid,
+          'nid_l' => $node->nid,
+          'vid_l' => $node->vid,
+        ))
+        ->execute();
+
+  return $r;
+}
+
+
+/**
+ * syndication_client_save_node_uid_map
+ * Re-maps the uid of the user from the syndication server
+ * Support the single sign on server
+ *
+ * @param $node | $file
+ *    The new node to be saved
+ *
+ * @todo: provide an interface to map users from syndication client without SSO
+ *
+ **/
+
+function syndication_client_save_node_uid_map(&$node) {
+
+  // IF there is no external mapping in the authmap table then
+  // Just assign to a valid local user
+
+  $account = user_external_load($node->uid);
+  if($account) {
+    $node->uid = $account->uid;
+    $node->name = $account->name;
+  }
+  else {
+    // Anonymous
+    if($node->uid == 0) {
+      return;
+    }
+
+    // Admin and API Users
+    if($node->uid == 1 || $node->name == 'api') {
+      return;
+    }
+
+    // Non-Anon
+    $node->uid = variable_get('syndication_client_default_user_map', 1);
+    $account = user_load($node->uid);
+    $node->name = $account->name;
+    return;
+  }
+
+
+}
+
+/**
+ * Attempts to connect content reference mappings
+ * if unable to find the reference an entry is stored for later fixes and
+ * a log is kept
+ *
+ * @param - $node
+ *  The node to fix the references on
+ *
+ **/
+function syndication_client_save_node_content_reference_map(&$node)
+{
+
+  static $field_names;
+  if(!is_array($field_names)) {
+
+    // Start off by getting reference fields
+    $q = db_select('field_config', 'fc')
+                ->fields('fc',array('id','field_name'))
+                ->condition('type','node_reference')
+                ->condition('active',1)
+                ->execute();
+
+    $field_names = array();
+    while($a = $q->fetchAssoc()) {
+      $field_names[$a['id']] = $a['field_name'];
+    }
+  }
+
+  foreach($field_names as $id => $field_name) {
+    if(isset($node->$field_name)) {
+      _syndication_client_map_nodereference_field($node, $field_name);
+    }
+  }
+
+
+}
+
+
+/**
+ * Attempts to find the relationship mapping on a node reference field
+ *
+ * @param $node
+ *    - The node object to fix
+ * @param $field_name [string]
+ *    - The field name to run the parent mapping on
+ **/
+function _syndication_client_map_nodereference_field(&$node, $field_name)
+{
+  ctools_include('syndication_client.utility', 'syndication_client', 'inc');
+
+  if(!isset($node->$field_name)) {
+    watchdog('syndication_client', 'Syndication Sync did not find field: ' . $field_name . '| Cannot map parent nids', array(), WATCHDOG_WARNING);
+    return false;
+  }
+
+  foreach($node->$field_name as $lang => &$values) {
+    foreach($values as $k => &$nid) {
+
+      // Look for node map
+      $nnid = _syndication_client_lookup_node_map_by_server_nid($nid['nid']);
+
+      // If we find one then map it
+      if($nnid) {
+        $nid['nid'] = $nnid;
+        continue;
+      }
+
+      // If we don't find one handle the error
+      _syndication_client_missing_nodereference_handler($node, $field_name, $nid['nid'], $k);
+    }
+  }
+
+}
+
+
+
+
+
+/**
+ * When saving/updating a node from the server sometimes the reference is not readily
+ * available to the client. In this case leave published the node and save the nid
+ * for the next run in order to look for missing parents
+ *
+ * @todo - Think through wether or not we want to unpublish nodes with missing references?
+ *
+ * @param - $node (object)
+ *    - The server node object
+ *
+ * @param - $field_name
+ *    - The name of the field with the missing relationship
+ *
+ * @param - $server_nid
+ *    - The nid of the related object from the server that is missing
+ *
+ * @param - $index (int)
+ *    - (Optional) The index of the value in the field
+ *
+ * @param - $lang (string)
+ *    - (Optional) field for use in multilanguage
+ *
+ **/
+function _syndication_client_missing_nodereference_handler(&$node, $field_name, $server_nid, $index = 0, $lang = LANGUAGE_NONE)
+{
+  // unpublish
+  // $node->status = 0;
+
+  // Save to the error table
+  $data = array(
+    'type' => 'node',
+    'node' => $node->nid,
+    'field_name' => $field_name,
+    'rid' => $server_nid,
+    'discovered' => REQUEST_TIME,
+    'last_attempt' => 0,
+    'status' => 0, // borked
+  );
+
+  $r = drupal_write_record('sc_missing_references', $data);
+
+  // Unset the reference
+  $node = (array) $node;
+
+  unset($node[$field_name][$lang][$index]);
+
+  // Cast back to an object
+  $node = (object) $node;
+
+  // Allow other modules to handle the missing nid error
+  module_invoke_all('sc_missing_reference', 'node', $node, $field_name, $server_nid, $lang);
+}
+
+
+/**
+ * This function attempts to repair the missing node references by looking at the latest mappings
+ *
+ *
+ **/
+
+function _syndication_client_repair_broken_node_references()
+{
+  ctools_include('syndication_client.utility', 'syndication_client', 'inc');
+  // First try to repair any of the broken mappings with local mappings
+  // Then request for them from the server
+
+
+  // Get and store broken nodes
+  $borked = array(); // a list of the broken node id
+  $found_maps = array(); // storage for found mappings to reduce queries
+  $no_local_maps = array(); // did not find a map. Storage for a syn_server query
+  $limit = variable_get('syndication_client_repair_nodes_limit', 100);
+
+  $q = db_select('sc_missing_references', 'scmr')
+      ->fields('scmr', array('id', 'node', 'field_name', 'rid'))
+      ->condition('type', 'node')
+      ->condition('status', 0)
+      ->orderBy('id', 'ASC')
+      ->range(0,$limit)
+      ->execute();
+
+  while($r = $q->fetchAssoc()) {
+    $borked[] = $r;
+  }
+
+  // Before we continue check to see if there is anything to do :)
+  if(!count($borked)) { return; }
+
+  // Ok there is something to do afterall :(
+
+  foreach($borked as $key => $v) {
+    $local_node = node_load($v['node']);
+
+    // If for some reason we cannot find the local node then kill the entry
+    if(!$local_node) {
+      db_delete('sc_missing_references')
+        ->condition('id', $v['id'])
+        ->execute();
+      continue;
+    }
+
+    // Try to find the missing node locally
+    if(array_key_exists($v['rid'], $found_maps)) {
+      $mapped_node = $found_maps[$v['rid']];
+    }
+    else {
+      $mapped_node = syndication_client_load_node_from_server_nid($v['rid']);
+    }
+
+    if(!$mapped_node) {
+      // Did not find the node locally. Store for later server query
+      $no_local_maps[] = $v;
+      continue;
+    }
+
+    // Found a local mapping. Add the reference back into the node
+    $found_maps[$v['rid']] = $mapped_node;
+
+    // @todo: update this to support multilingual
+    // @todo: update this to support field weights
+    $local_node = (array) $local_node;
+    $local_node[$v['field_name']][LANGUAGE_NONE][] = array('nid'=>$mapped_node->nid);
+
+    // return back to object and save
+    $local_node = (object) $local_node;
+    $node->status = 1;
+    node_save($local_node);
+
+    // Remove the broken entry from the db
+    // @todo:   Expand this to update the entry instead of delete
+    //          Then create a cleanup function to remove old entries
+    //          The idea is to store information for better reporting
+
+    db_delete('sc_missing_references')
+    ->condition('id', $v['id'])
+    ->execute();
+
+  } // end foreach loop
+
+
+  // The above should take care of all local mappings
+
+
+
+  /* @todo
+              Think about this some more. Do I really want to be asking
+              the server for nodes. This could spider out of control quickly
+  */
+
+
+  // Ask the server for the nodes that were not found.
+
+}
+
+
+
+
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// TAXONOMY / VOCABULARY UPDATE / SYNC FUNCTIONS
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+/**
+ * Create / Update / Map Server vocabularies
+ *
+ * @param $vocabs
+ *    An array of vocabulary objects
+ * @return $vocabs
+ *    An updated array of vocabularies
+ **/
+
+function syndication_client_save_vocabularies($vocabs) {
+
+  // if(!is_array($vocabs)) { return; }
+
+  foreach($vocabs as $k => $vocab) {
+    $vocab = syndication_client_save_vocabulary($vocab);
+    $vocabs[$k] = $vocab;
+  }
+
+  return $vocabs;
+}
+
+
+/**
+ * Syndication client save a vocabulary
+ * @param $vocab
+ *    A vocabulary object
+ * @return $vocab
+ *    An updated vocabulary object
+ *
+ **/
+
+function syndication_client_save_vocabulary($vocab) {
+  ctools_include('syndication_client.utility', 'syndication_client', 'inc');
+
+  // check for existing vocabulary
+  $vocab = (object)$vocab; // cast to object
+
+  $exists = _syndication_client_vocabulary_lookup_map_by_name($vocab->machine_name, 'server');
+  $original = clone($vocab);
+
+  if($exists) {
+    $vocab->machine_name = $exists['machine_name_l'];
+    $vocab->vid = $exists['vid_l'];
+  }
+  else {
+    // The mapping does not have match.
+    // If the same name exists we will hijack it for use with the syndication server
+    $tax = taxonomy_vocabulary_machine_name_load($vocab->machine_name);
+    if(isset($tax->vid)) {
+      $vocab->vid = $tax->vid;
+      $vocab->machine_name = $tax->machine_name;
+    }
+    else {
+      // There is no mapping and a vocab with the same name doesn't exist so we nedd to create a new one
+      unset($vocab->vid);
+    }
+
+  }
+
+  $saved = taxonomy_vocabulary_save($vocab);
+  $vocab = taxonomy_vocabulary_machine_name_load($vocab->machine_name);
+
+  // if($saved == SAVED_NEW) {
+    _syndication_client_save_vocab_map($vocab, $original);
+  // }
+
+  return $vocab;
+}
+
+
+
+
+/**
+ * _syndication_client_save_vocab_map
+ * Saves the mapping from the syndicaiton server to client for vocabulary entities
+ *
+ * @param $vocab
+ *    The new local vocabulary object
+ * @param $original
+ *    The original vocabulary object
+ * @return boolean
+ *    Success in saving
+ **/
+
+function _syndication_client_save_vocab_map($vocab, $original) {
+
+  $r = db_merge('sc_vocabmap')
+        ->key(array('machine_name_s' => $original->machine_name))
+        ->fields(array(
+          'machine_name_s' => $original->machine_name,
+          'machine_name_l' => $vocab->machine_name,
+          'vid_s' => $original->vid,
+          'vid_l' => $vocab->vid,
+        ))
+        ->execute();
+
+  return $r;
+}
+
+
+
+
+/**
+ * syndication_client_save_taxonomy_tree
+ * Saves a taxonomy tree from the syndication server to the local
+ * @param $tree
+ *    The full taxonomy tree from the server
+ * @param $vid
+ *    The server vocabulary id (NOT LOCAL)
+ * @return a fully saved and mapped tree
+ **/
+
+function syndication_client_save_taxonomy_tree($tree, $vid) {
+  ctools_include('syndication_client.utility', 'syndication_client', 'inc');
+
+  $vocab_map = _syndication_client_vocabulary_lookup_map_by_vid($vid, 'server');
+  $vid_local = $vocab_map['vid_l'];
+
+  if(!$vid_local) {
+    watchdog(WATCHDOG_INFO, 'Could not save tree for passed server $VID: ' . $vid);
+    return;
+  }
+
+  foreach($tree as $k => $term) {
+   $tree[$k] = syndication_client_save_taxonomy_term($term, $vid_local);
+  }
+
+  return $tree;
+}
+
+
+
+/**
+ * syndication_client_save_taxonomy_term
+ * Saves a term provided by the server into a local vocabulary
+ * If the term exists then update the existing term
+ *
+ * @param $term
+ *    A term object
+ *
+ * @param $vid
+ *    The LOCAL vocabulary id to save the term into
+ *
+ * @return $term
+ *    The fully updated and mapped term object
+ **/
+
+function syndication_client_save_taxonomy_term($term, $vid) {
+
+  $term = (object)$term;
+  static $tax_maps;
+  if(!isset($tax_maps[$vid])) {
+    $tax_maps[$vid] = syndication_client_get_term_map_array($vid, 'vid_l');
+  }
+
+  $original = clone($term);
+  $add_to_map = FALSE;
+
+  // server tid
+  unset($term->tid);
+  // Set new local vid
+  $term->vid = $vid;
+
+  // Check to see if term already exists
+  if(array_key_exists($original->tid, $tax_maps[$vid])) {
+    $term->tid = $tax_maps[$vid][$original->tid]['tid_l'];
+  } else {
+    $add_to_map = TRUE;
+  }
+
+  // Fix parents
+  // When saving a tree the tree should be orderd with the parents first
+  // We can assume the parents exist
+  foreach($term->parents as $k => $v) {
+    if(!$v) { continue; } // not 0
+    $term->parent[$k] = $tax_maps[$vid][$v]['tid_l'];
+  }
+
+  // Silly plural to singular when saving
+  unset($term->parents);
+
+  taxonomy_term_save($term);
+  syndication_client_save_term_map($term, $original);
+
+  if($add_to_map) {
+    $tax_maps[$vid][$original->tid] = array(
+      'tid_s' => $original->tid,
+      'tid_l' => $term->tid,
+      'vid_s' => $original->vid,
+      'vid_l' => $term->vid,
+    );
+  }
+
+  return $term;
+}
+
+
+/**
+ * syndication_client_save_term_map
+ * Save the mapping information about a new term that was just saved
+ * @param $term
+ *    The new saved local term object
+ * @param $original
+ *    The server term object
+ **/
+
+function syndication_client_save_term_map($term, $original) {
+
+  $r = db_merge('sc_termmap')
+        ->key(array('tid_s' => $original->tid))
+        ->fields(array(
+          'tid_s' => $original->tid,
+          'tid_l' => $term->tid,
+          'vid_s' => $original->vid,
+          'vid_l' => $term->vid,
+        ))
+        ->execute();
+}
+
+
+
+
+/**
+ * syndication_client_get_term_map_array
+ * Returns an array of id maps for a vocabulary
+ * @param $id
+ *    The vocabulary id of term maps to look for
+ *
+ * @param $key
+ *    either vid_l or vid_s to indicate what server or local vid to get maps for
+ *
+ * @return array
+ *    an array of term maps keyed by the server term id
+ **/
+
+function syndication_client_get_term_map_array($vid, $key) {
+
+  $result = db_select('sc_termmap', 'sc')
+            ->fields('sc')
+            ->condition($key,$vid)
+            ->execute();
+
+  $ret = array();
+
+  while($o = $result->fetchAssoc()) {
+    $ret[$o['tid_s']] = $o;
+  }
+
+  return $ret;
+}
+
+
+/**
+ * Implements hook_taxonomy_vocabulary_delete().
+ */
+function syndication_client_taxonomy_vocabulary_delete($vocabulary) {
+
+  // Remove the mapping from the db
+  db_delete('sc_vocabmap')
+    ->condition('vid_l', $vocabulary->vid)
+    ->execute();
+
+}
+
+
+
+/**
+ * syndication_client_save_node_taxonomy_map loops through the vocabulary fields on a node
+ * and updates the term ids with the properly mapped local term ids
+ *
+ * @param $node
+ *    The node to perform the taxonomy mappings
+ *
+ **/
+
+function syndication_client_save_node_taxonomy_map(&$node) {
+
+  static $fields;
+  if(!is_array($fields)) {
+
+    // GET Term relationship fields from cck
+    $q = db_select('field_config', 'fc')
+                ->fields('fc',array('id','field_name'))
+                ->condition('type','taxonomy_term_reference')
+                ->condition('active',1)
+                ->execute();
+
+    $fields = array();
+    while($a = $q->fetchAssoc()) {
+      $fields[$a['id']] = $a['field_name'];
+    }
+
+  }
+
+  // Loops through fields on the node
+  foreach($fields as $id => $field_name) {
+    if(isset($node->$field_name)) {
+      _syndication_client_map_term_reference_field($node, $field_name);
+    }
+  }
+
+
+}
+
+/**
+ * loops through the values in a node->field taxonomy term reference
+ * and updates the mapping to local ids
+ *
+ * @param - $node
+ *    A passed by reference node to update
+ *
+ * @param - $field_name
+ *    The field name to run on
+ **/
+
+function _syndication_client_map_term_reference_field(&$node, $field_name) {
+  ctools_include('syndication_client.utility', 'syndication_client', 'inc');
+
+  if(!isset($node->$field_name)) { return; }
+
+  foreach($node->$field_name as $index => &$v) {
+
+    foreach($v as $kk => &$tid) {
+
+      $new_tid = _syndication_client_lookup_local_tid_by_server_tid($tid['tid']);
+
+      if($new_tid) {
+        $tid['tid'] = $new_tid;
+      }
+      else {
+        // We did not find a valid tid! handle the error.
+        _syndication_client_missing_termreference_handler($node, $tid['tid'], $field_name);
+      }
+
+    }
+
+  }
+
+}
+
+
+
+
+
+/**
+ * Handles an error of not finding a local term map
+ *
+ * @param - $node
+ *    The server node object
+ *
+ * @param - $tid (int)
+ *    The tid from the server that did not have a local mapping
+ *
+ * @param - $field_name
+ *    The name of the field with the missing reference
+ *
+ * @param - $index (int)
+ *    - (Optional) The index of the value in the field
+ *
+ * @param - $lang (string)
+ *    - (Optional) field for use in multilanguage
+ *
+ **/
+function _syndication_client_missing_termreference_handler($node, $tid, $field_name, $index = 0, $lang = LANGUAGE_NONE) {
+
+  // Save to the error table
+  $data = array(
+    'type' => 'term',
+    'node' => $node->nid,
+    'field_name' => $field_name,
+    'rid' => $tid,
+    'discovered' => REQUEST_TIME,
+    'last_attempt' => 0,
+    'status' => 0, // borked
+  );
+
+  $r = drupal_write_record('sc_missing_references', $data);
+
+  // Unset the reference
+  $node = (array) $node;
+
+  unset($node[$field_name][$lang][$index]);
+
+  // Cast back to an object
+  $node = (object) $node;
+
+  // Allow other modules to handle the missing nid error
+  module_invoke_all('sc_missing_reference', 'term', $node, $field_name, $tid, $lang);
+
+
+}
+
+
+
+/**
+ * Check if there are any entries in the broken reference table.
+ *
+ * TODO: Should this actually decrease the limit size? Could we run into issue when we need to fix too many broken refrences?
+ */
+function _syndication_client_resolve_mapping($limit = 100) {
+  $result = db_query('SELECT id FROM {sc_missing_references}');
+  $i = $result->rowCount();
+  if ($i) {
+    _syndication_client_repair_broken_term_references($limit);
+    _syndication_client_repair_broken_node_references($limit);
+  }
+  return $i;
+}
+
+
+/**
+ * Attempts to repair broken term references on nodes by looking at the most
+ * Updated mappings
+ **/
+function _syndication_client_repair_broken_term_references($limit) {
+
+ ctools_include('syndication_client.utility', 'syndication_client', 'inc');
+  // First try to repair any of the broken mappings with local mappings
+  // Then request for them from the server
+
+
+  // Get and store broken nodes
+  $borked = array(); // a list of the broken node id
+  $found_maps = array(); // storage for found mappings to reduce queries
+  $no_local_maps = array(); // did not find a map. Storage for a syn_server query
+  // $limit = variable_get('syndication_client_repair_nodes_limit', 100);
+
+  $q = db_select('sc_missing_references', 'scmr')
+      ->fields('scmr', array('id', 'node', 'field_name', 'rid'))
+      ->condition('type', 'term')
+      ->condition('status', 0)
+      ->orderBy('id', 'ASC')
+      ->range(0,$limit)
+      ->execute();
+
+  while($r = $q->fetchAssoc()) {
+    $borked[] = $r;
+  }
+
+  // Before we continue check to see if there is anything to do :)
+  if(!count($borked)) { return; }
+
+  // Ok there is something to do afterall :(
+
+  foreach($borked as $key => $v) {
+    $local_node = node_load($v['node']);
+
+    // If for some reason we cannot find the local node then kill the entry
+    if(!$local_node) {
+      db_delete('sc_missing_references')
+        ->condition('id', $v['id'])
+        ->execute();
+
+        continue;
+    }
+
+    // Try to find the missing term locally
+    if(array_key_exists($v['rid'], $found_maps)) {
+      $mapped_term = $found_maps[$v['rid']];
+    }
+    else {
+      $tid_l = _syndication_client_lookup_local_tid_by_server_tid($v['rid']);
+
+      $mapped_term = taxonomy_term_load($tid_l);
+    }
+
+    if(!$mapped_term) {
+      // Did not find the term locally. Store for later server query
+      $no_local_maps[] = $v;
+      continue;
+    }
+
+    // Found a local mapping. Add the reference back into the node
+    $found_maps[$v['rid']] = $mapped_term;
+
+    // @todo: update this to support multilingual
+    // @todo: update this to support field weights
+    $local_node = (array) $local_node;
+    $local_node[$v['field_name']][LANGUAGE_NONE][] = array('tid'=>$mapped_term->tid);
+
+    // return back to object and save
+    $local_node = (object) $local_node;
+    $node->status = 1;
+    node_save($local_node);
+
+    // Remove the broken entry from the db
+    // @todo:   Expand this to update the entry instead of delete
+    //          Then create a cleanup function to remove old entries
+    //          The idea is to store information for better reporting
+    db_delete('sc_missing_references')
+    ->condition('id', $v['id'])
+    ->execute();
+
+
+  } // end foreach loop
+
+
+
+  // @todo |  Think about querying the server for the missing terms
+  //          Initial feelings is to not as most likely the vocab wasnt shared
+
+
+
+  // Add an updated timestamp to those items we could not resolve
+  $ids = array();
+  foreach($no_local_maps as $k => $v) {
+      $ids[] = $v['id'];
+  }
+
+  if(count($ids)) {
+    db_update('sc_missing_references')
+    ->fields(
+      array(
+        'last_attempt' => REQUEST_TIME
+        )
+      )
+    ->condition('id', $ids)
+    ->execute();
+  }
+
+
+}
+
+
+
+/**
+ * Helper function to clear the cache.
+ */
+function _syndication_client_cc_helper($cids = array('syndication_nodes_new', 'syndication_nodes_update'), $bin = 'cache', $reset_count = TRUE) {
+  foreach ($cids as $cid) {
+    cache_clear_all($cid, $bin);
+  }
+  if ($reset_count) {
+    variable_set('syndication_cache_count', 0);
+  }
+}
+
+
+
+
+
+
+
+// ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// FILE FUNCTIONS
+// ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+/**
+ * Attempts to fix the file/media fields from syndicated content
+ *
+ * @param $node
+ *    The node object
+ *
+ **/
+function syndication_client_save_node_file_reference_map(&$node)
+{
+  static $fields;
+  if(!is_array($fields)) {
+
+    // GET file fields from cck
+    $q = db_select('field_config', 'fc')
+                ->fields('fc',array('id','field_name'))
+                ->condition('type',array('image','file','media'))
+                ->condition('active',1)
+                ->execute();
+
+    $fields = array();
+    while($a = $q->fetchAssoc()) {
+      $fields[$a['id']] = $a['field_name'];
+    }
+
+  }
+
+  // Loops through fields on the node
+  foreach($fields as $id => $field_name) {
+    if(isset($node->$field_name) && is_array($node->$field_name) && count($node->$field_name)) {
+      // fix it
+      syndication_client_map_filefield($node, $field_name);
+    }
+  }
+}
+
+
+/**
+ * Iterates through an entire file/image/media field and updates the file references
+ *
+ * @param $node
+ *    The node object
+ *
+ * @param $field_name
+ *    The name of the field to iterate over
+ *
+ **/
+function syndication_client_map_filefield(&$node, $field_name)
+{
+
+  $field = $node->$field_name;
+
+  foreach($field as $lang => &$files){
+    foreach($files as $k => &$file) {
+      if(is_array($file) && !empty($file['uri'])) {
+       syndication_client_save_remote_file($file);
+       $node->{$field_name}[$lang][$k] = $file;
+      }
+    }
+  }
+
+}
+
+
+
+
+/**
+ * Saves external file information to the local system
+ *
+ * @param $file (array) from cck field
+ *    The file array to save
+ **/
+function syndication_client_save_remote_file(&$file)
+{
+  ctools_include('syndication_client.utility', 'syndication_client', 'inc');
+  $file = (object) $file;
+  $original = clone($file);
+
+  // first check to see if we have a local copy
+  $local_file = _syndication_client_lookup_remote_file_map($file->fid);
+
+  // if we find a local merge the new file with the old one to update info
+  if($local_file) {
+
+    unset($file->fid);
+
+    $local_file = (array) $local_file;
+    $file = (array) $file;
+
+    $file = array_merge($local_file, $file); // local first to take new info
+
+    // return to object
+    $file = (object) $file;
+  }
+  else
+  {
+    // Remove external file id
+    unset($file->fid);
+  }
+
+  // update the steam wrapper
+  _syndication_client_apply_remote_file_steam_uri($file);
+
+  // Map the uid
+  syndication_client_save_node_uid_map($file);
+
+  // save the file
+  syndication_client_file_save($file);
+
+  // save the fid mapping from server to client
+  syndicaiton_client_save_filemap($file, $original);
+
+  // To return it into an array
+  $file = (array) $file;
+
+}
+
+
+/**
+ * Saves a file mapping to the sc_filemap table
+ *
+ * @param $new (object)
+ *    The new file object
+ *
+ * @param $original (object)
+ *    The original file object from the server
+ **/
+function syndicaiton_client_save_filemap($new, $original)
+{
+
+  $r = db_merge('sc_filemap')
+      ->key(array('fid_s' => $original->fid))
+      ->fields(array(
+        'fid_s' => $original->fid,
+        'fid_l' => $new->fid,
+      ))
+      ->execute();
+
+  return $r;
+}
+
+
+
+/**
+ * A copy of the system file save in order to bypass some items like filesize
+ * checking as remote urls do not validate and break
+ *
+ * @param  $file
+ *    A file object returned by file_load()
+ * @return $file
+ */
+
+function syndication_client_file_save(&$file) {
+
+  if(!$file->uri) {
+    drupal_set_message('Error saving file. No URI','error');
+    return;
+  }
+
+   // Load the stored entity, if any.
+  if (!empty($file->fid) && !isset($file->original)) {
+    $file->original = entity_load_unchanged('file', $file->fid);
+  }
+
+  module_invoke_all('file_presave', $file);
+  module_invoke_all('entity_presave', $file, 'file');
+
+  if (empty($file->fid)) {
+    drupal_write_record('file_managed', $file);
+    // Inform modules about the newly added file.
+    module_invoke_all('file_insert', $file);
+    module_invoke_all('entity_insert', $file, 'file');
+  }
+  else {
+    drupal_write_record('file_managed', $file, 'fid');
+    // Inform modules that the file has been updated.
+    module_invoke_all('file_update', $file);
+    module_invoke_all('entity_update', $file, 'file');
+  }
+
+  unset($file->original);
+}
+
+
+
+
+
+
+
+
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// UPDATE / SYNC FUNCTIONS
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Implementation of Hook Cron
+ *
+ **/
+
+function syndication_client_cron() {
+
+  if (variable_get('syndication_process_on_cron', 0)) {
+
+    $now = time();
+
+    // Get time of last cron run
+    $last_run = variable_get('syndication_cron_last_run', $now);
+    // Record time for this cron run
+    variable_set('syndication_cron_last_run', $now);
+
+    // Get config options
+    $interval = variable_get('syndication_cron_interval', 60*60); // defaults to 1 hour
+    // $limit = variable_get('syndication_cron_sync_limit', 100);
+
+    // Check for remaining items to be processed from the previous run.
+    $r_new = cache_get('syndication_nodes_new');
+    $r_update = cache_get('syndication_nodes_update');
+    $count = variable_get('syndication_cache_count', 0);
+
+    // If something is left and we have not tried to solve it 3 times, try again
+    if ((!empty($r_new->data) || !empty($r_update->data)) && $count < 3) {
+      variable_set('syndication_cache_count', $count++);
+
+      if ($r_new) {
+        syndication_client_save_nodes('syndication_nodes_new');
+      }
+
+      if ($r_update) {
+        syndication_client_save_nodes('syndication_nodes_update', FALSE);
+      }
+      // Try to fix broken refrences
+      _syndication_client_resolve_mapping();
+
+      // Check if the cache is empty now
+      $r_new = cache_get('syndication_nodes_new');
+      $r_update = cache_get('syndication_nodes_update');
+      if (empty($r_new) && empty($r_update)) {
+        _syndication_client_cc_helper();
+        // Indicate that everything is processed and we can move on
+        variable_set('syndication_retry', FALSE);
+      }
+      // If the cache is not empty but we tried it 3 times clean the cache as well
+      elseif ($count == 3) {
+        _syndication_client_cc_helper();
+        // We need to let the system know to fetch with the old timestamp again.
+        variable_set('syndication_retry', TRUE);
+      }
+    }
+    // Check if it is time again to ask for new stuff
+    elseif ($now > ($last_run + $interval)) {
+       // Run Taxonomy
+      syndication_client_sync_taxonomy();
+
+      // Get last succesfull node sync
+      $last_request = variable_get('syndication_last_server_request', 0);
+      // If the retry flag is not set we can move the fallback point forward.
+      // Else, we need to work with the old timestamp.
+      if (!variable_get('syndication_retry', FALSE)) {
+        variable_set('syndication_fallback_time', $last_request);
+      }
+      else {
+        $last_request = variable_get('syndication_fallback_time', 0);
+      }
+
+      // RUN Nodes!
+      $result = syndication_client_sync_nodes($last_request);
+
+      // Try to fix broken refrences
+      _syndication_client_resolve_mapping();
+    }
+
+    watchdog('syndication_client', 'Ran syndication client hook_cron', array(), WATCHDOG_NOTICE);
+  }
+}
+
+
+
+/**
+ * Update hook for syndication nodes
+ * Connects to the server and pulls down all new and updated nodes
+ * Parse those nodes for proper field relationships and timezone handling
+ * Save the content
+ *
+ *
+ **/
+
+function syndication_client_sync_nodes($timestamp = 0) {
+
+  $status = 0;
+  // Lock out further processes if running
+  if(!lock_acquire('syndication_client_sync_nodes')) {
+    lock_wait('syndication_client_sync_nodes');
+    return $status;
+  }
+
+  $limit = variable_get('syndication_cron_sync_limit', 100); // maximum number of items to sync
+
+  // In order to avoid having nodes all with the same timestamp in the limit we need to include
+  // an offset handler
+  $offset   = variable_get('syndication_client_node_sync_offset', 0);
+
+  // GET ALL NEW AND UPDATED NODES
+  // See syndication_client_fetch_nodes() for the single function
+  // ------------------------------------------------------------------------------------------------------
+
+  $args = array(
+    'limit' => $limit,
+    'date_min' => $timestamp,
+    'date_select' => 'changed',
+    'date_max' => time(),
+    'offset' => $offset,
+  );
+
+  $nodes = syndication_client_fetch_nodes($args);
+
+  // Successfull call
+  if(is_array($nodes)) {
+    $status = 1;
+    $last_ts = variable_get('syndication_last_updated_node', 0);
+
+    if(count($nodes) < $limit) {
+      $last_ts++;
+    }
+
+    variable_set('syndication_last_server_request', $last_ts);
+  }
+  // The connection broke down
+  else {
+    if(module_exists('devel')) {
+      dpm('Failed to connect to syndication server and retrieve nodes');
+    }
+    watchdog('syndication_client', 'Failed to connect to syndication server and retrieve nodes', NULL, WATCHDOG_ALERT);
+    $status = 0;
+  }
+
+  // GET DELETED NODES
+  // ------------------------------------------------------------------------------------------------------
+
+  $deleted = syndication_client_make_request(array(
+    'what' => 'syndication_node',
+    'action' => 'deleted',
+    'args' => array(
+      'limit' => 1000000,
+      'date_min' => $timestamp,
+      'date_max' => time(),
+    ),
+  ));
+
+  // Some nodes have been deleted
+  if($deleted) {
+
+    // Translate server NIDs for Local NIDS
+    foreach($deleted as $k => $v) {
+
+      $q = db_select('sc_nodemap','sc')
+            ->fields('sc',array('nid_l'))
+            ->range(0,1)
+            ->condition('sc.nid_s',$v)
+            ->execute();
+
+      $result = $q->fetchAssoc();
+
+      if(is_numeric($result['nid_l'])){
+        $deleted[$k] = $result['nid_l'];
+      }
+      else{
+        unset($deleted[$k]);
+      }
+
+    }
+
+    // Alter hook to allow other modules to avoid deletion of content
+    foreach (module_implements('sc_node_delete_alter') as $module) {
+      $deleted = module_invoke($module, 'sc_node_delete_alter', $deleted);
+    }
+
+    $d_count = count($deleted);
+    if ($d_count) {
+      node_delete_multiple($deleted);
+      watchdog('syndication_client', 'Deleted ' . $count . ' nodes', array(), WATCHDOG_INFO);
+    }
+  }
+
+
+  // FREE!
+  lock_release('syndication_server_sync_nodes');
+  return $status;
+}
+
+/**
+ * Fetch nodes from the server and process them
+ */
+function syndication_client_fetch_nodes($args = array()) {
+
+  $request = array(
+    'what' => 'syndication_node',
+    'action' => 'select',
+    'args' => $args,
+  );
+
+  // Check which nodes to request
+  $types = array_keys(node_type_get_types());
+  $ct = array();
+  foreach ($types as $type) {
+    if(variable_get('syndication_enable_' . $type, 0)) {
+      // Check if we also need to take mapping into account
+      if (variable_get('syndication_map_' . $type, 0)) {
+        $map =  variable_get('syndication_map_override_' . $type, array());
+        $ct[] = (!empty($map['identifier'])) ? $map['identifier'] : $type;
+      }
+      else {
+        $ct[] = $type;
+      }
+    }
+  }
+  $request['args']['content_type'] = implode($ct, ',');
+
+  // Alter hook to change the request query before it is sent to the server.
+  foreach (module_implements('sc_node_query_alter') as $module) {
+    $request = module_invoke($module, 'sc_node_query_alter', $request);
+  }
+
+  $result = syndication_client_make_request($request);
+
+  // We have received nodes from the server. Save them.
+  if(is_array($result)) {
+    // Check if we actually got nodes back
+    $count = count($result);
+
+    if ($count) {
+
+      // Keeps tabs on wether or not every node that was returned in the last
+      // request had the same timestamp. We need to do this to avoid receiving
+      // the same nodes over and over again
+      syndication_client_sync_nodes_timestamp_index_request_handler($result);
+
+      // Map first the field names
+      $result = syndication_client_ct_field_map($result);
+
+      // Split the result into new and update
+      $nids = array_keys($result);
+
+      $exist = db_select('sc_nodemap', 'sn')
+        ->fields('sn', array('nid_s'))
+        ->condition('nid_s', $nids, 'IN')
+        ->execute();
+
+
+      $new = $result;
+      $update = array();
+      foreach($exist as $node) {
+        $update[$node->nid_s] = $result[$node->nid_s];
+        unset($new[$node->nid_s]);
+      }
+      $result = array(
+        'new' => $new,
+        'update' => $update
+      );
+
+      // Alter hook to modify the nodes before saving them
+      foreach (module_implements('sc_node_result_alter') as $module) {
+        $result = module_invoke($module, 'sc_node_result_alter', $result);
+      }
+
+      // Save the results in the cache
+      cache_set('syndication_nodes_new', $result['new']);
+      cache_set('syndication_nodes_update', $result['update']);
+
+      // Save new nodes
+      $nodes = syndication_client_save_nodes('syndication_nodes_new');
+      // Save updated nodes
+      $nodes = syndication_client_save_nodes('syndication_nodes_update', FALSE);
+
+      return $nodes;
+    }
+    else {
+
+      // reset the offset
+      variable_set('syndication_client_node_sync_offset', 0);
+
+      // increment the last time by 1
+      $prev_ts = variable_get('syndication_last_server_request', 0);
+      $prev_ts++;
+
+      variable_set('syndication_last_server_request', $prev_ts);
+
+      // Return an empty array instedad of false if no nodes have been found.
+      return array();
+
+    }
+  }
+  else {
+    return FALSE;
+  }
+
+}
+
+/**
+ * syndication_client_sync_nodes_timestamp_index_request_handler
+ * Checks the returned nodes from the server to see if all the nodes have the
+ * same timestamp. If they do we need to increase the index offset of the next
+ * request to the server so that new nodes are returned and not the same ones
+ * over and over again
+ *
+ * @param array $nodes
+ *  The array of nodes returned from the syndication server
+ */
+
+function syndication_client_sync_nodes_timestamp_index_request_handler($nodes) {
+
+  if(!array($nodes)) { return false; }
+
+  $stamps = array();
+
+  foreach($nodes as $nid => $node) {
+    // var_dump($node['changed']);
+    @$stamps[$node['changed']]++;
+  }
+
+  // We have more then one timestamp
+  if(count($stamps) >= 2) {
+    variable_set('syndication_client_node_sync_offset', 0);
+    return;
+  }
+
+  // In the strange case that we return a full set of timestamps that are identical
+  // but they are not the same as the previous timestamp reset the index to 0
+  $prev_ts = variable_get('syndication_last_server_request', 0);
+
+  if(!array_key_exists($prev_ts, $stamps)) {
+    variable_set('syndication_client_node_sync_offset', 0);
+    return;
+  }
+
+  // We only have one timestamp. Increase the offset
+  $offset = variable_get('syndication_client_node_sync_offset', 0);
+  $offset++;
+  variable_set('syndication_client_node_sync_offset', $offset);
+
+}
+
+
+/**
+ * Perform the content type and field mapping.
+ *
+ * TODO: Ideally the mapping should be cached somewhere so that the first
+ * foreach loop can be skipped.
+ * @param  $results
+ *         An array of nodes returned from the request to the server
+ * @return  An array of nodes with updated field names
+ */
+function syndication_client_ct_field_map($results) {
+  $types = array_keys(node_type_get_types());
+  $keys = array();
+  $map = array();
+  foreach ($types as $type) {
+    if(variable_get('syndication_enable_' . $type, 0) && variable_get('syndication_map_' . $type, 0)) {
+      $values = array_filter(variable_get('syndication_map_override_' . $type, array()));
+
+      // If the identifier is different we need to reverse the mapping of this field to work in the next loop.
+      if (isset($values['identifier'])) {
+        $remote_type = $values['identifier'];
+        $map[$remote_type]['identifier'] = $type;
+        unset($values['identifier']);
+        $map[$remote_type]['values'] = $values;
+
+      }
+      else {
+        $map[$type]['values'] = $values;
+      }
+    }
+  }
+
+  $keys = array_keys($map);
+  // Loop through result nodes
+  foreach ($results as $id => $node) {
+    if (in_array($node['type'], $keys)) {
+      // Switch the content type
+      if (isset($map[$node['type']]['identifier'])) {
+        $results[$id]['type'] = $map[$node['type']]['identifier'];
+      }
+
+      foreach ($map[$node['type']]['values'] as $local_field => $remote_field) {
+        $local_field = str_replace('syndication_fm_', '', $local_field);
+        $results[$id][$local_field] = $results[$id][$remote_field];
+        unset($results[$id][$remote_field]);
+      }
+    }
+  }
+  return $results;
+}
+
+
+
+/**
+ * Syndication Sync Taxonomy Vocabularies and Terms
+ * This function syncs with the servers latest vocaularies and
+ * Pulls down the term trees
+ *
+ **/
+
+function syndication_client_sync_taxonomy() {
+
+  if(!lock_acquire('syndication_client_sync_taxonomy', 30)) {
+    lock_wait('syndication_client_sync_taxonomy', 30);
+    return;
+  }
+
+
+  // First Get And Sync vocabularies
+  $vocabs = syndication_client_make_request(
+    array(
+      'what' => 'syndication_taxonomy',
+      'action' => 'enabled_vocabs',
+    )
+  );
+
+  // DIE if no response
+  if(!$vocabs) {
+    lock_release('syndication_client_sync_taxonomy');
+    return;
+  }
+
+  $mapped_vocabs = syndication_client_save_vocabularies($vocabs);
+
+  // GET TREES
+  $vids = array();
+  foreach($vocabs as $k => $v) {
+    $vids[] = $v['vid'];
+  }
+
+  $trees = syndication_client_make_request(
+    array(
+      'what' => 'syndication_taxonomy',
+      'action' => 'get_trees',
+      'args' => array(
+        'vid' => $vids,
+      ),
+    )
+  );
+
+  if(!$trees){ return; }
+
+  foreach($trees as $vid => $tree) {
+    syndication_client_save_taxonomy_tree($tree, $vid);
+  }
+
+  // FREE!
+  lock_release('syndication_client_sync_taxonomy');
+
+}
+
+
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// MODULE HOOKS
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Implementation of hook_form_alter
+ *
+ **/
+
+function syndication_client_form_alter(&$form, &$form_state, $form_id) {
+
+  // Vocabulary Edit Page
+  if($form_id == "taxonomy_form_vocabulary"){
+    syndication_client_taxonomy_form_vocabulary_alter($form, $form_state);
+  }
+
+  // Vocabulary Terms Page
+  if($form_id == "taxonomy_overview_terms") {
+    syndication_client_taxonomy_overview_terms_alter($form, $form_state);
+  }
+
+}
+
+
+
+/**
+ * Disables editing of the fields on a taxonomy vocabulary page
+ * when a vocabulary is from the syndication server
+ *
+ **/
+
+function syndication_client_taxonomy_form_vocabulary_alter(&$form, &$form_state) {
+  ctools_include('syndication_client.utility', 'syndication_client', 'inc');
+
+  $vocab = $form['#vocabulary'];
+  $exists = _syndication_client_vocabulary_lookup_map_by_name($vocab->machine_name, 'local');
+
+  if($exists) {
+    drupal_set_message('This taxonomy is from the syndication server. You cannot make changes as any changes made will be overridden on the next update.', 'error');
+    $form["#validate"][] = 'syndication_client_taxonomy_form_vocabulary_alter_validate';
+  }
+
+}
+
+
+
+/**
+ * Disable any editing of a taxonomy if from syndication server
+ * by throwing out an error
+ *
+ **/
+
+function syndication_client_taxonomy_form_vocabulary_alter_validate(&$form, &$form_state) {
+
+  // allow delete or throw error
+
+  if($form_state['clicked_button']['#value'] == "Delete") {
+    return;
+  }
+
+  form_set_error('name', 'This is a syndication taxonomy. You cannot make changes on this site.');
+
+}
+
+
+/**
+ * Disables editing of terms on a taxonomy vocabulary page term list page
+ * when a vocabulary is from the syndication server
+ *
+ **/
+function syndication_client_taxonomy_overview_terms_alter(&$form, $form_state) {
+  ctools_include('syndication_client.utility', 'syndication_client', 'inc');
+
+  $vocab = $form['#vocabulary'];
+  $exists = _syndication_client_vocabulary_lookup_map_by_name($vocab->machine_name, 'local');
+
+  if($exists) {
+    drupal_set_message('This taxonomy is from the syndication server. You cannot make changes as any changes made will be overridden on the next update.', 'error');
+    $form['#validate'][] = "syndication_client_taxonomy_overview_terms_alter_validate";
+    $form['synhide'] = array('#type'=>'hidden', '#value' => 'DONT SAVE ME');
+    $form['#submit'] = array(); // oh this is dirty
+
+  }
+}
+
+/**
+  * Disables editing of terms on a taxonomy vocabulary page term list page
+  * when a vocabulary is from the syndication server
+  *
+  **/
+
+function syndication_client_taxonomy_overview_terms_alter_validate(&$form, $form_state) {
+
+  form_set_error('synhide', 'This vocabulary is from the syndication server you cannot save it');
+
+}
+
+
+
+

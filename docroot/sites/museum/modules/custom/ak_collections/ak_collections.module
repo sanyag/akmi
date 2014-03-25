@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the AK Collections feature.
+ */
+
+include_once 'ak_collections.features.inc';

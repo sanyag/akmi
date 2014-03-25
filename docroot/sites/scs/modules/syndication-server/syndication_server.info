@@ -1,0 +1,13 @@
+name = Syndication Server
+description = Syndication Server
+package = Syndication
+version = "7.x-1.0"
+core = 7.x
+dependencies[] = "services"
+dependencies[] = "rest_server"
+dependencies[] = "ctools"
+dependencies[] = "taxonomy"
+files[] = syndication_server.module
+files[] = syndication_server.install
+files[] = inc/syndication_server.admin.inc
+files[] = inc/syndication_server.utility.inc

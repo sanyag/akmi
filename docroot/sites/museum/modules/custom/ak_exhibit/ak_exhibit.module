@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the AK Exhibit feature.
+ */
+
+include_once('ak_exhibit.features.inc');

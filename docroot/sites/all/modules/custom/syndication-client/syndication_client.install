@@ -1,0 +1,250 @@
+<?php
+
+
+/**
+ * Implements hook_install().
+ */
+function syndication_client_install() {
+
+  // Default Server URL
+  variable_set('syndication_server_url','');
+  // The the public file system information
+  variable_set('syndication_server_file_system', 'sites/default/files');
+  // How long should the client try to connect to the server before timeout
+  variable_set('syndication_request_timeout',30);
+  // Endpoint for nodes
+  variable_set('syndication_endpoint_content','syndication/content');
+  // Endpoint for taxonomy
+  variable_set('syndication_endpoint_taxonomy','syndication/taxonomy');
+  // Endpoint for files
+  variable_set('syndication_endpoint_file','syndication/files');
+  // Last time the syndication cron ran
+  variable_set('syndication_cron_last_run',0);
+  // How often the cron is allowed to run
+  variable_set('syndication_cron_interval', 360);
+  // The number of nodes/items to sync in one go
+  variable_set('syndication_cron_sync_limit', 100);
+  // Wether or not the last cron run for nodes completed
+  variable_set('syndication_cron_complete_node', 0);
+  // Wether or not the last cron run for taxonomy completed
+  variable_set('syndication_cron_complete_tax', 0);
+  // Wether or not the last cron run for files completed
+  variable_set('syndication_cron_complete_file', 0);
+  // Last created date imported for nodes
+  variable_set('syndication_cron_last_created_node', 0);
+  // Last updated date imported for nodes
+  variable_set('syndication_cron_last_updated_node', 0);
+  // Default user to map to
+  variable_set('syndication_client_default_user_map', 1);
+  // Syndication client Keys
+  variable_set('syndication_client_keys', array());
+  // Client Domain Name
+  variable_set('syndication_client_domain','http://'.$_SERVER['SERVER_NAME']);
+  // Number of items to run on a repair process
+  variable_set('syndication_client_repair_nodes_limit', 100);
+  // wether or not the syndication server is running behind https or some other protocal
+  variable_set('syndication_client_server_protocal', 'http');
+
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function syndication_client_uninstall() {
+
+
+}
+
+/**
+ * Implements hook_schema().
+ */
+function syndication_client_schema() {
+  return array(
+
+    // Node Map Table
+    'sc_nodemap' => array(
+      'description' => 'Stores nid and vid mappings',
+      'fields' => array(
+        'nid_s' => array(
+          'description' => t('The Nid From the server'),
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+          'default' => 0,
+        ),
+        'nid_l' => array(
+          'description' => t('The Nid From the local environment'),
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+          'default' => 0,
+        ),
+        'vid_s' => array(
+          'description' => t('The VID from the server'),
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+          'default' => 0,
+        ),
+        'vid_l' => array(
+          'description' => t('The local environment version ID'),
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+          'default' => 0,
+        ),
+      ),
+      'primary key' => array('nid_s'),
+    ),
+
+
+    // Vocabulary Map Table
+    'sc_vocabmap' => array(
+      'description' => 'Stores Vocabulary Machine Name and Vocabulary mapping information',
+      'fields' => array(
+        'machine_name_s' => array(
+          'description' => 'Server Machine Name',
+          'type' => 'varchar',
+          'length' => '255',
+          'not null' => FALSE,
+        ),
+        'machine_name_l' => array(
+          'description' => 'Local Machine Name',
+          'type' => 'varchar',
+          'length' => '255',
+          'not null' => FALSE,
+        ),
+        'vid_s' => array(
+          'description' => 'Server Vocabulary ID',
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+          'default' => 0,
+        ),
+        'vid_l' => array(
+          'description' => 'Local Vocabulary ID',
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+          'default' => 0,
+        ),
+      ),
+      'primary key' => array('machine_name_s'),
+    ),
+
+
+    // Taxonomy Term Map Table
+    'sc_termmap' => array(
+      'description' => 'Stores taxonomy term id mapping information',
+      'fields' => array(
+        'tid_s' => array(
+          'description' => 'Server Term Id',
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'tid_l' => array(
+          'description' => 'Local Term Id',
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'vid_s' => array(
+          'description' => 'Server Vocabulary Id',
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'vid_l' => array(
+          'description' => 'Local Vocabulary Id',
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+      ),
+      'primary key' => array('tid_s'),
+    ),
+
+
+    // File Map Table
+    'sc_filemap' => array(
+      'description' => 'Stores file mapping system_site_information_settings_validate(form, &form_state)',
+      'fields' => array(
+        'fid_s' => array(
+          'description' => 'Server file Id',
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'fid_l' => array(
+          'description' => 'Local file Id',
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+      ),
+      'primary key' => array('fid_s'),
+    ),
+
+
+    // Missing reference fields
+    'sc_missing_references' => array(
+      'description' => 'Stores information about invalid field_file_references(file)',
+      'fields' => array(
+        'id' => array(
+          'description' => 'Key ID',
+          'type' => 'serial',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'type' => array(
+          'description' => 'The reference type', // eg: node, user, block, term
+          'type' => 'varchar',
+          'length' => '255',
+          'not null' => FALSE,
+          'default' => 'node',
+        ),
+        'node' => array(
+          'description' => 'Local Node Id',
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'field_name' => array(
+          'description' => 'The field name with the error',
+          'type' => 'varchar',
+          'length' => '255',
+          'not null' => TRUE,
+        ),
+        'rid' => array(
+          'description' => 'The server reference_id',
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'discovered' => array(
+          'description' => 'The date the broken link was discovered',
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'last_attempt' => array(
+          'description' => 'The last attempt to repair was run date',
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'status' => array(
+          'description' => 'Status of broken link. eg: 1.fixed, 2.404, 3.does not exist, 0.broken',
+          'type' => 'int',
+          'size' => 'small',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+      ),
+      'primary key' => array('id'),
+    ),
+
+
+  );
+}

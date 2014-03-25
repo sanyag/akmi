@@ -1,0 +1,130 @@
+html[dir='rtl'] {
+  /***********************************************************************
+ *                                REGIONS                              *
+ ***********************************************************************/
+
+  /***********************************************************************
+ *                           GEOGRAPHIES MAP                           *
+ ***********************************************************************/
+
+}
+#publication-layout .left .file .file-size { float:left;}
+.node-type-publication .block-menu-block-2 { display:block;}
+.jcarousel-skin-akdn .jcarousel-item {width:238px !important;}
+#block-panels-mini-footer-menus .inside .panel-pane { margin:0;}
+div#block-print-print-links.block-print-links, #block-block-29, #block-addthis-addthis, .print-syslink, .block-menu-block-2 {
+	display: inline-block;
+}
+div#block-print-print-links.block-print-links .content .print_mail, #block-block-29 .content .print_mail {
+	display: -moz-inline-box;
+	display: -moz-inline-stack;
+	display: inline-block;
+	vertical-align: top;
+	zoom: 1;
+	float: left;
+	margin: 10px 5px 0 0;
+}
+.container-24 .grid-6 #block-block-29 .print_html {
+	margin: 11px 48px 1px 0px;
+	display: inline-block;
+}
+.container-24 .grid-6 #block-block-29 {
+	width: 176px;
+}
+.container-24 .grid-6 .pane-addthis-addthis, .container-24 .grid-6 #block-addthis-addthis {
+	width: 44px;
+}
+.container-24 .grid-11 {
+	width: 440px;
+}
+div#block-print-print-links.block-print-links .content .print_mail a, #block-block-29 .content .print_mail a {
+	display: -moz-inline-box;
+	display: -moz-inline-stack;
+	display: inline-block;
+	vertical-align: top;
+	zoom: 1;
+	padding-left: 12px;
+	background: url(../images/share_icons.png) 0 -19px no-repeat;
+	height: 11px;
+	color: #b49759;
+}
+.pane-addthis-addthis .pane-content .custom-addthis-button, #block-addthis-addthis .pane-content .custom-addthis-button, .pane-addthis-addthis .content .custom-addthis-button, #block-addthis-addthis .content .custom-addthis-button {
+	padding-left: 12px;
+	background: url(../images/share_icons.png) 0 -2px no-repeat;
+	color: #b49759;
+	text-decoration: none;
+}
+div#block-print-print-links.block-print-links .content .print_html a, #block-block-29 .content .print_html a {
+	display: -moz-inline-box;
+	display: -moz-inline-stack;
+	display: inline-block;
+	vertical-align: top;
+	zoom: 1;
+	padding-left: 12px;
+	background: url(../images/share_icons.png) 0 -34px no-repeat;
+	height: 11px;
+	color: #b49759;
+}
+#zone-footer #mini-panel-footer_menus .panel-pane.pane-agencies .pane-title {
+	border-left:0 !important;
+	padding-right:50px !important;
+}
+#zone-footer #mini-panel-footer_menus .panel-pane.pane-menu-block-4 .pane-content {
+	border-left: 1px solid #e2d7c0;
+	border-right: 1px solid #e2d7c0;
+	padding-right:10px;
+}
+#zone-footer #mini-panel-footer_menus h2.pane-title {
+	margin-bottom: 20px;
+}
+#zone-footer #mini-panel-footer_menus .panel-pane.pane-agencies .pane-content { padding-right:40px;}
+#block-panels-mini-footer-menus .inside .pane-menu-block-4 .pane-title { border-left:0 !important; border-right:0 !important;}
+#block-panels-mini-footer-menus .inside .pane-geography-footer-menu .pane-title { border-right:0 !important;}
+.mobile-menu-link-wrapper { display:none;}
+#zone-user #region-menu #block-menu-block-6 { 
+	padding: 20px 0;
+	height: auto;
+	display: -moz-inline-box;
+	display: inline-block;
+	zoom: 1;
+	vertical-align: top;
+	width: 70%;
+	float: right;
+}
+#block-akdn-custom-akdn-search {padding:12px 0 0;}
+#zone-user #region-menu #block-menu-block-6 .menu .leaf {
+	list-style: none;
+	padding: 0;
+	line-height: 12px;
+	margin: 0;
+	border: none;
+	border-right: 1px solid #808285;
+	background: none;
+	display: -moz-inline-box;
+	display: inline-block;
+	zoom: 1;
+}
+#zone-user #region-menu #block-menu-block-6 .menu .leaf a {
+	text-decoration: none;
+	padding: 6px 26px;
+	display: block;
+	color: #000;
+}
+html[dir='rtl'] #zone-user #region-menu #block-block-17 {
+  padding-right: 30px;
+  margin: 0;
+  float: right;
+}
+html[dir="rtl"] #zone-user #region-menu #block-menu-block-6 ul.menu li.last {border-bottom:0;}
+html[dir='rtl'] #zone-user #region-menu #block-block-17 .content {
+  padding-left: 18px;
+  padding-right: 0;
+  border-left: 1px solid #808285;
+  border-right: 0;
+}
+html[dir="rtl"] #zone-user #region-menu #block-menu-block-6 ul.menu li {
+  padding: 0;
+}
+html[dir='rtl'] #country-list .region {
+  float: right;
+}

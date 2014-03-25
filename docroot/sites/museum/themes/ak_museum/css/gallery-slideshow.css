@@ -1,0 +1,219 @@
+/* Background Colors */
+/* Font/Copy Colors */
+/******************************
+*
+*  RoyalSlider overrides for AK Museum
+*
+******************************/
+/* Background */
+.rsDefault .rsOverflow,
+.rsDefault .rsSlide,
+.rsDefault .rsVideoFrameHolder,
+.rsDefault .rsThumbs {
+  background: #FFFFFF;
+}
+.rsFullscreenBtn {
+  display: none !important;
+}
+.rsFullscreenBtn .rsFullscreenIcn {
+  background-color: #000;
+}
+#ak-gallery.rsFullscreen .rsFullscreenBtn {
+  display: block !important;
+}
+/***************
+*
+*  1. Arrows
+*
+****************/
+.rsDefault .rsArrowIcn {
+  width: 40px;
+  height: 79px;
+  top: 40%;
+  left: 50%;
+  position: absolute;
+  cursor: pointer;
+}
+.rsDefault .rsArrowIcn:hover {
+  background-color: transparent;
+}
+.rsDefault.rsHor .rsArrowLeft {
+  left: -50px;
+}
+.rsDefault.rsHor .rsArrowRight {
+  right: -50px;
+}
+.rsDefault.rsHor .rsArrowLeft .rsArrowIcn,
+.rsDefault.rsHor .rsArrowRight .rsArrowIcn {
+  background-position: 0 0;
+}
+.rsDefault.rsHor .rsArrowLeft .rsArrowIcn {
+  margin-left: -24px;
+}
+.rsDefault.rsHor .rsArrowRight .rsArrowIcn {
+  margin-left: -15px;
+}
+.rsDefault .rsArrowDisabled .rsArrowIcn {
+  background-color: transparent;
+  opacity: 1;
+}
+.rsArrowRight .rsArrowIcn,
+.rsArrowRight.rsArrowDisabled .rsArrowIcn {
+  background: url('../images/gallery-arrow-r.png') transparent 0 0 no-repeat;
+}
+.rsArrowLeft .rsArrowIcn,
+.rsArrowLeft.rsArrowDisabled .rsArrowIcn {
+  background: url('../images/gallery-arrow-l.png') transparent 0 0 no-repeat;
+}
+/***************
+*
+*  3. Thumbnails
+*
+****************/
+.rsDefault .rsThumb.rsNavSelected {
+  background: transparent;
+}
+.rsDefault .rsThumb.rsNavSelected img {
+  opacity: 0.3;
+  filter: alpha(opacity=30);
+}
+.rsDefault .rsThumbsArrow {
+  background: #fff;
+  width: 24px;
+}
+.rsDefault .rsThumbsArrow:hover {
+  background: #fff;
+}
+.rsDefault.rsWithThumbsHor .rsThumbsArrowRight .rsThumbsArrowIcn {
+  background: url('../images/gallery-thumb-arrow-r.png') transparent no-repeat;
+  background-position: 0 0;
+}
+.rsDefault.rsWithThumbsHor .rsThumbsArrowLeft .rsThumbsArrowIcn {
+  background: url('../images/gallery-thumb-arrow-l.png') transparent 0 0 no-repeat;
+  background-position: 0 0;
+  left: 30%;
+}
+.rsDefault .rsThumbsArrowIcn {
+  width: 20px;
+  height: 38px;
+  margin-top: -18px;
+}
+/***************
+*
+*  5. Fullscreen button
+*
+****************/
+.rsDefault .rsFullscreenIcn {
+  background: #000000 url('../images/rs-default.png') 0 0;
+}
+/********************
+ *
+ * AK Museum changes
+ *
+ ********************/
+#ak-gallery {
+  width: 100%;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 2px solid #0074aa;
+}
+#ak-gallery .rsSlide,
+#ak-gallery .rsOverflow {
+  background: #fff;
+}
+#ak-gallery img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+#ak-gallery .rsOverflow {
+  border-bottom: 2px solid #0074aa;
+}
+#ak-gallery .rsThumbsHor {
+  width: 50%;
+  float: right;
+  margin: 20px 0;
+  cursor: default;
+}
+#ak-gallery .rsThumbsHor img {
+  cursor: pointer;
+}
+#ak-gallery .rsGCaption {
+  width: 49%;
+}
+#ak-gallery .rsGCaption .copyright {
+  text-align: right;
+  position: absolute;
+  margin-top: -40px;
+  font-size: 12px;
+  width: 100%;
+}
+#ak-gallery .rsGCaption .caption {
+  text-align: left;
+  padding-top: 20px;
+}
+#ak-gallery .rsThumbsArrow {
+  height: 72px !important;
+}
+#ak-gallery.rsFullscreen img.rsImg {
+  margin-top: 40px !important;
+}
+#ak-gallery.rsFullscreen .rsThumbsHor {
+  margin: 0;
+}
+#ak-gallery.rsFullscreen .rsDefault.rsHor .rsArrowRight {
+  right: 2px;
+}
+#ak-gallery.rsFullscreen .rsDefault.rsHor .rsArrowLeft {
+  left: 0;
+}
+#ak-gallery.rsFullscreen .rsNav {
+  background: none;
+}
+#ak-gallery.rsFullscreen .rsGCaption {
+  position: absolute;
+  bottom: 100px;
+  background: rgba(0, 0, 0, 0.6);
+  width: 100%;
+}
+#ak-gallery.rsFullscreen .rsGCaption .copyright,
+#ak-gallery.rsFullscreen .rsGCaption .caption {
+  text-align: center;
+  color: #fff;
+}
+#ak-gallery.rsFullscreen .rsThumbsHor {
+  width: 100%;
+  float: none;
+}
+body.node-type-gallery #block-system-main .panel-panel .field-name-title-field {
+  font-size: 20px;
+  font-weight: bold;
+  color: #000000;
+  width: 675px;
+  line-height: 24px;
+}
+body.node-type-gallery #block-system-main .panel-panel #addthis-wrapper {
+  display: block;
+  float: right;
+  margin-top: -33px;
+}
+body.node-type-gallery #akdn-gallery-prefix {
+  float: right;
+  width: 210px;
+}
+body.node-type-gallery #akdn-gallery-prefix a.full-screen {
+  float: left;
+  padding: 7px 7px 7px 44px;
+  background: #e6e6e6 url(../images/gallery-fs.png) no-repeat 7px 50%;
+  font-size: 12px;
+  text-transform: uppercase;
+  font-weight: bold;
+  color: #57585a;
+}
+body.node-type-gallery #akdn-gallery-prefix .slide-counter {
+  float: right;
+  font-weight: bold;
+  padding-top: 8px;
+}

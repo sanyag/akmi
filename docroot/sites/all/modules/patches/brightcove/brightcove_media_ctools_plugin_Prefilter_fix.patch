@@ -1,0 +1,16 @@
+diff --git a/docroot/sites/all/modules/contrib/brightcove/brightcove_media/brightcove_media.module b/docroot/sites/all/modules/contrib/brightcove/brightcove_media/brightcove_media.module
+index a97fdb3..bfbd887 100644
+--- a/docroot/sites/all/modules/contrib/brightcove/brightcove_media/brightcove_media.module
++++ b/docroot/sites/all/modules/contrib/brightcove/brightcove_media/brightcove_media.module
+@@ -399,6 +399,11 @@ function brightcove_media_list() {
+ 
+     $result = $bc->find($method, $bc_find_params);
+     if (count($result)) {
++      foreach ($result as $key => $video) {
++        if (!in_array("_AKDN", $video->tags)) {
++            unset($result[$key]);
++        }
++      }
+       foreach ($result as $video) {
+         $file = (object) array(
+           'fid' => "v{$video->id}",

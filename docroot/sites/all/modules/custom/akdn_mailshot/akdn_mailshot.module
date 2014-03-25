@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the AKDN Mailshot feature.
+ */
+
+include_once 'akdn_mailshot.features.inc';

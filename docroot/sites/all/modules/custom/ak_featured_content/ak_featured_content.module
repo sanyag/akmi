@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the AK Featured Content feature.
+ */
+
+include_once('ak_featured_content.features.inc');

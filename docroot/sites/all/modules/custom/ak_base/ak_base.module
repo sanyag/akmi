@@ -1,0 +1,6 @@
+<?php
+/**
+ * @file
+ */
+
+include_once('ak_base.features.inc');

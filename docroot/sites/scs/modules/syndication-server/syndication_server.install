@@ -1,0 +1,95 @@
+<?php
+
+
+/**
+ * Implements hook_install().
+ */
+function syndication_server_install() {
+  
+  // Storage for syndicated taxonomies
+  variable_get('syndication_enabled_vocabularies', array());
+  
+  
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function syndication_server_uninstall() {
+  
+}
+
+/**
+ * Implements hook_schema().
+ */
+function syndication_server_schema() {
+  return array(
+    'ss_deleted_nodes' => array(
+      'description' => 'Stores information about deleted nodes',
+      'fields' => array(
+        'nid' => array(
+          'description' => 'The primary identifier for a node.',
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'date' => array(
+          'description' => t('The date the node was deleted'),
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+          'default' => 0,
+        ),
+      ),
+      'primary key' => array('nid'),
+    ),
+    'ss_client_keys' => array(
+      'description' => 'Stores information about client API keys',
+      'fields' => array(
+        'kid' => array(
+          'description' => 'Key ID',
+          'type' => 'serial',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'client_domain' => array(
+          'description' => 'The domain the client resides on',
+          'type' => 'varchar',
+          'length' => '255',
+          'not null' => FALSE,
+        ),
+        'client_secret' => array(
+          'description' => 'Client Secret Key',
+          'type' => 'varchar',
+          'length' => '255',
+          'not null' => FALSE,
+        ),
+        'client_public' => array(
+          'description' => 'Client Public Key',
+          'type' => 'varchar',
+          'length' => '255',
+          'not null' => FALSE,
+        ),
+        'server_secret' => array(
+          'description' => 'Server secret key',
+          'type' => 'varchar',
+          'length' => '255',
+          'not null' => FALSE,
+        ),
+        'server_public' => array(
+          'description' => 'Server Public Key',
+          'type' => 'varchar',
+          'length' => '255',
+          'not null' => FALSE,
+        ),
+        'status' => array(
+          'description' => 'The active status of the key',
+          'type' => 'int',
+          'not null' => TRUE,
+          'default' => 0,
+        )
+      ),
+      'primary key' => array('kid'),
+    ),
+  );
+}

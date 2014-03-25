@@ -1,0 +1,563 @@
+  <?php
+
+function ecard_admin_init() {
+  if (variable_get('ecard_debug', 0) == 1 && user_access("administer ecards") && arg(0) == 'admin') {
+    drupal_set_message('Debug mode is on; no eCards will be sent.', 'warning', FALSE);
+  }
+}
+
+/**
+ * Implements hook_permission().
+ */
+function ecard_admin_permission() {
+  return array(
+    'administer ecards' =>  array(
+      'title' => t('Administer the eCard system'),
+    ),
+    'send ecards' => array(
+      'title' => t('Send eCards'),
+    ),
+  );
+}
+
+function ecard_admin_block_info() {
+  // This example comes from node.module.
+    $blocks['campaign_submission_ecard'] = array(
+      'info' => t('Campaign Submission Export'),
+      'cache' => DRUPAL_NO_CACHE
+    );
+
+    return $blocks;
+  }
+
+function ecard_admin_block_view($delta = '') {
+ switch ($delta) {
+   case 'campaign_submission_ecard':
+     //$block['subject'] = t('Subscription Form1');
+     $block['content'] = drupal_get_form('ecard_admin_export_form',$delta);
+   break;
+ }
+ return $block;
+};
+
+
+function ecard_admin_export_form() {
+
+  $form['campaign_export_button'] = array(
+  '#type' => 'submit',
+  '#value' => t('Click here to export the campaign data'),
+  '#description' => t('Click here to export the campaign data'),
+);
+return $form;
+}
+
+
+function ecard_admin_export_form_submit() {
+
+$query = db_select('eck_submission', 'eck');
+$query->join('field_data_field_se_blocked', 'bl', 'eck.id = bl.entity_id');
+$query->join('field_data_field_se_campaign', 'cam', 'eck.id = cam.entity_id');
+$query->join('node', 'n', 'cam.field_se_campaign_target_id = n.nid');
+$query->join('field_data_field_se_delivered', 'del', 'eck.id = del.entity_id');
+$query->join('field_data_field_se_email', 'fro', 'eck.id = fro.entity_id');
+$query->join('field_data_field_se_remail', 'rec', 'eck.id = rec.entity_id');
+$query->join('field_data_field_se_template', 'temp', 'eck.id = temp.entity_id');
+$query->join('node', 'n1', 'temp.field_se_template_target_id = n1.nid');
+
+$query->fields('eck',array('id'))
+  ->fields('n',array('title'))
+  ->fields('n1',array('title'))
+  ->fields('bl',array('field_se_blocked_value'))
+  ->fields('cam',array('field_se_campaign_target_id'))
+  ->fields('del',array('field_se_delivered_value'))
+  ->fields('fro',array('field_se_email_value'))
+  ->fields('rec',array('field_se_remail_value'))
+  ->fields('temp',array('field_se_template_target_id'));
+
+  $result = $query->execute();
+  $rows = array();
+
+$filename = 'submission.csv';
+  drupal_add_http_header('Content-Type', 'text/csv; utf-8');
+  drupal_add_http_header('Content-Disposition', 'attachment; filename=' . $filename);
+
+$header = array('Sender Email', 'Recipient Email', 'Campaign Name', 'Delivery Date', 'Template Name', 'Blocked status');
+
+$output .= implode(",", $header) . "\n";
+
+  while($record = $result->fetchAssoc()) {
+
+    // Fill the table rows
+    if($record['field_se_blocked_value'] == '0') {
+      $record['field_se_blocked_value'] = 'NO';
+    }
+    else {
+      $record['field_se_blocked_value'] = 'YES';
+    }
+      $row = array();
+      $row = array(
+        $record['field_se_email_value'],
+        $record['field_se_remail_value'],
+        $record['title'],
+        date('F d D, Y - H:i:s',$record['field_se_delivered_value']),
+        $record['n1_title'],
+        $record['field_se_blocked_value']
+      );
+      $output .= implode(",", $row) . "\n";
+  }
+
+  print $output;
+
+exit;
+}
+
+
+
+/**
+ * Implements hook_menu().
+ */
+function ecard_admin_menu() {
+  $items['admin/config/system/ecard'] = array(
+    'title' => 'eCard Administration',
+    'description' => 'Admin functions for the eCard system.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ecard_admin_form'),
+    'access arguments' => array('administer ecards'),
+    'file' => 'ecard_admin.admin.inc',
+  );
+  $items['admin/structure/types/manage/%node_type/ecard'] = array(
+    'title' => 'eCard Layout',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ecard_admin_layout_settings', 4),
+    'access arguments' => array('administer ecards'),
+    'file' => 'ecard_admin.admin.inc',
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 10,
+  );
+  $items['ecard-send/%node/%node'] = array(
+    'title' => 'Customise your eCard',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ecard_admin_create', 1, 2),
+    'access arguments' => array('send ecards'),
+    'file' => 'ecard_admin.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+  $items['ecard-send/preview/%node/%node'] = array(
+    'title' => 'eCard Preview',
+    'page callback' => 'ecard_admin_preview',
+    'page arguments' => array(2, 3),
+    'access arguments' => array('send ecards'),
+    'file' => 'ecard_admin.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+/*
+  $items['admin/campaign/system/export'] = array(
+    'title' => 'eCard Submission Export',
+    'description' => 'Export for Campaign Submissions.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ecard_admin_export_form'),
+    'access arguments' => array('administer ecards'),
+    'file' => 'ecard_admin.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+*/
+  return $items;
+}
+
+
+function ecard_admin_cron() {
+  _ecard_cleanup_submissions();
+  _ecard_admin_send_emails();
+  _ecard_admin_process_submissions();
+}
+
+
+/**
+ * Implements hook_form_alter().
+ */
+
+function ecard_admin_form_alter(&$form, &$form_state, $form_id) {
+  //dpm($form_id);
+  //dpm($form);
+  //dpm($form_state);
+  switch ($form_id) {
+
+    //adds instructions for modifying eCards in the submission queue to the relevant form
+    case 'views_form_submission_queue_page':
+      if ($form_state['step'] == 'views_bulk_operations_config_form') {
+        $form[''] = array(
+          '#markup' => t('Setting the status to "Processed" will process the submission without actually sending
+            the eCard. Setting the status to "Queued for delivery" will deliver the eCard.
+            "Keep Submission" will keep the eCard in the queue without sending it.'),
+        );
+      }
+      break;
+
+    //CAPTCHA should only show on the last page of the eCard creation form
+    case 'ecard_admin_create':
+      if (!isset($form_state['step_num']) || $form_state['step_num'] != 3) {
+        if (isset($form['captcha'])) {
+          unset($form['captcha']);
+        }
+      }
+      break;
+
+    default:
+      break;
+  }
+}
+
+function _ecard_admin_word_filter($text, $type = 'keyword') {
+  if ($type == 'keyword') {
+    $badWords = variable_get('ecard_keywords', "");
+  }
+  else if ($type = 'email') {
+    $badWords = variable_get('ecard_emails', "");
+    $parts = explode(' <', $text);
+    $text = rtrim($parts[1], ">");
+  }
+
+
+  $search   = array("\r\n", "\n", "\r");
+  $replace = '|';
+  $badWords = str_replace($search, $replace, $badWords);
+
+  $matches = array();
+  $matchFound = preg_match_all("/\b(" . $badWords . ")\b/i", $text, $matches);
+
+  if ($matchFound) {
+    $response = array();
+    $words = array_unique($matches[0]);
+    foreach($words as $word) {
+      $response[] = $word;
+    }
+    return $response;
+  }
+  else {
+    return FALSE;
+  }
+}
+
+function _ecard_admin_token_replace($text, $key, $source) {
+  $text = str_replace('[' . $key . ':', '[node:', $text);
+  return token_replace($text, array('node' => $source));
+}
+
+/**
+ * Check for submissions that are ready to be split up.
+ */
+function _ecard_admin_process_submissions() {
+  $limit = variable_get('ecard_limit', 50);
+  $ids = db_query('SELECT id FROM {eck_submission} WHERE type = :type LIMIT '. $limit, array(':type' => 'submission_request'))->fetchCol();
+  $entities = entity_load('submission', $ids);
+
+  $header = variable_get('ecard_global_header', "");
+  $footer = variable_get('ecard_global_footer', "");
+
+  foreach ($entities as $submission) {
+
+    if ($submission->field_sr_status[LANGUAGE_NONE][0]['value'] == '1'){
+      $sender_name = $submission->field_sr_name[LANGUAGE_NONE][0]['value'];
+      $sender_email = $submission->field_sr_email[LANGUAGE_NONE][0]['email'];
+
+      $template = array_shift(entity_load('node', array($submission->field_sr_template[LANGUAGE_NONE][0]['target_id'])));
+      $campaign = array_shift(entity_load('node', array($submission->field_sr_campaign[LANGUAGE_NONE][0]['target_id'])));
+      // Create the main structure
+      $structure = $header . variable_get($template->type . '_ecard_template_html', '') . $footer;
+
+      // Place the CSS
+      $css = variable_get($template->type . '_ecard_template_css', '');
+      $structure = str_replace('[template:style]', $css, $structure);
+
+      //Place the footer
+      $footer = variable_get($template->type . '_ecard_template_footer_html', '');
+      $structure = str_replace('[template:footer]', $footer, $structure);
+
+      // Replace the layout and campaign specific tokens
+      $structure = _ecard_admin_token_replace($structure, 'layout', $template);
+      $structure = _ecard_admin_token_replace($structure, 'campaign', $campaign);
+
+      // Replace the message tokens
+      $structure = str_replace('[message:text]', nl2br($submission->field_sr_body[LANGUAGE_NONE][0]['value']), $structure);
+      $structure = str_replace('[message:sender_name]', $sender_name, $structure);
+      $structure = str_replace('[message:sender_email]', $sender_email, $structure);
+
+      $structure = html_entity_decode($structure);
+
+
+      $rec_list = $submission->field_sr_recipients[LANGUAGE_NONE][0]['value'];
+      foreach(explode("\r\n", $rec_list) as $recipient){
+        $entity = entity_create('submission', array());
+        $entity->type = "submission_email";
+        $entity->created = time();
+        $entity->field_se_email = array(LANGUAGE_NONE => array(0 => array('value' => "\"$sender_name\" <$sender_email>")));
+        $entity->field_se_remail = array(LANGUAGE_NONE => array(0 => array('value' => $recipient)));
+
+        $recipient_name = explode(' <', $recipient);
+        $recipient_name[0] = str_replace('@', ' ', $recipient_name[0]);
+        $struct = str_replace('[message:receiver_name]', $recipient_name[0], $structure);
+
+        $entity->field_se_html = array(LANGUAGE_NONE => array(0 => array('value' => $struct)));
+
+        $entity->field_se_template = array(LANGUAGE_NONE => array(0 => array('target_id' => $template->nid, 'target_type' => $template->type)));
+        $entity->field_se_campaign = array(LANGUAGE_NONE => array(0 => array('target_id' => $campaign->nid, 'target_type' => $campaign->type)));
+
+        // Check if the email id blacklisted
+        if (_ecard_admin_word_filter($recipient, 'email') || _ecard_admin_word_filter($entity->field_se_email[LANGUAGE_NONE][0]['value'], 'email')) {
+          $entity->field_se_blocked = array(LANGUAGE_NONE => array(0 => array('value' => '1')));
+        }
+        else {
+          $entity->field_se_blocked = array(LANGUAGE_NONE => array(0 => array('value' => '0')));
+        }
+
+        $entity->save();
+      }
+
+      // Set status of submission to processed.
+      $submission->field_sr_status[LANGUAGE_NONE][0]['value'] = '2';
+      $submission->save();
+    }
+  }
+}
+
+/**
+ * Send out the individual emails
+ */
+function _ecard_admin_send_emails() {
+  global $language;
+  $limit = variable_get('ecard_limit', 50);
+  $ids = db_query('SELECT e.id FROM {eck_submission} e LEFT JOIN {field_data_field_se_blocked} f ON f.entity_id = e.id LEFT JOIN {field_data_field_se_delivered} d ON d.entity_id = e.id
+WHERE e.type = :type and f.field_se_blocked_value = 0 and d.field_se_delivered_value IS NULL LIMIT '. $limit, array(':type' => 'submission_email'))->fetchCol();
+
+
+
+
+  $entities = entity_load('submission', $ids);
+
+  foreach ($entities as $email){
+
+
+    if (empty($email->field_se_delivered) && $email->field_se_blocked[LANGUAGE_NONE][0]['value'] == '0') {
+
+      //send emails here
+      $rec_name = $email->field_se_remail[LANGUAGE_NONE][0]['value'];
+      $sender_name = $email->field_se_email[LANGUAGE_NONE][0]['value'];
+      $template_nid = $email->field_se_template[LANGUAGE_NONE][0]['target_id'];
+      $campaign_nid = $email->field_se_campaign[LANGUAGE_NONE][0]['target_id'];
+
+
+      $campaign = array_shift(entity_load('node', array($email->field_se_campaign[LANGUAGE_NONE][0]['target_id'])));
+
+      $params = array();
+      $html = $email->field_se_html[LANGUAGE_NONE][0]['value'];
+      $body = explode('</body>', $html);
+
+
+
+      //if the Google Analytics code is set in the eCard admin page, we add tracking images to the eCard.
+      if (variable_get('ecard_ga', "") != "") {
+        $ga_campaign_url = _ecard_admin_ga_get_campaign($campaign_nid);
+        $ga_template_url = _ecard_admin_ga_get_template($template_nid);
+        $ga_img = '<img src="' . $ga_campaign_url . '" style="visibility:hidden;" />';
+        $ga_img .= '<img src="' . $ga_template_url . '" style="visibility:hidden;" />';
+        $body[0] .= $ga_img;
+      }
+      else {
+        watchdog('eCard', t('Google Analytics code not set in ecard admin settings'));
+      }
+
+      $params['message'] = implode('</body>', $body);
+      $params['subject'] = $campaign->title;
+      $sender_email = explode('<', $email->field_se_email[LANGUAGE_NONE][0]['value']);
+      $sender_email = $sender_email[1];
+      $sender_email = substr(trim($sender_email), 0, -1);
+
+
+      $rec_email = explode('<', $email->field_se_remail[LANGUAGE_NONE][0]['value']);
+
+      if (count($rec_email) > 1) {
+        $rec_email = $rec_email[1];
+        $rec_email = substr(trim($rec_email), 0, -1);
+
+      } else {
+        $rec_email = $rec_email[0];
+      }
+      //Check if debug mode is on; if it is not, send the eCard.
+      if (variable_get('ecard_debug', 0) == 0) {
+        require_once 'mandrill-api-php/src/Mandrill.php'; //Not required with Composer
+
+
+    $mandrill = new Mandrill('K2WS_Q03NEOI6UQF4GmLfw');
+// Send Email
+    $message = new stdClass();
+    $message->html = $params['message'];
+    $message->text = "text body";
+    $message->subject = $params['subject'];
+    $message->from_email = $sender_email;
+    $message->from_name = $sender_name;
+    $message->to = array(array("email" => $rec_email));
+    $message->track_opens = true;
+
+    $response = $mandrill->messages->send($message);
+     } else {
+        watchdog('eCard', t('Debug mode is on, no eCards sent.'));
+      }
+
+
+
+      $email->field_se_email[LANGUAGE_NONE][0]['value'] = md5($sender_email);
+      $email->field_se_remail[LANGUAGE_NONE][0]['value'] = md5($rec_email);
+      $entity->field_se_html[LANGUAGE_NONE][0]['value'] = "--- Removed ---";
+      $email->field_se_delivered = array(LANGUAGE_NONE => array(0 => array('value' => time())));
+
+      $email->save();
+    }
+  }
+}
+
+function ecard_admin_mail($key, &$message, $params) {
+  switch($key) {
+    case 'ecard':
+      $message['subject'] = $params['subject'];
+      $message['body'][] = $params['message'];
+      $message['headers']['Content-Type'] = 'text/html; charset=UTF-8; format=flowed;';
+      break;
+    case 'flagged_message':
+      $message['subject'] = t('an eCard was flagged for review');
+      $message['body'][] = $params['message'];
+      $message['headers']['Content-Type'] = 'text/html; charset=UTF-8; format=flowed;';
+      break;
+  }
+}
+
+/**
+ * Remove submissions that sbould not been kept.
+ */
+function _ecard_cleanup_submissions() {
+  $ids = db_query('SELECT id FROM {eck_submission} WHERE type = :type', array(':type' => 'submission_request'))->fetchCol();
+  $entities = entity_load('submission', $ids);
+
+  $delete = array();
+  foreach ($entities as $submission) {
+    if ($submission->field_sr_status[LANGUAGE_NONE][0]['value'] == '2' && $submission->field_sr_keep[LANGUAGE_NONE][0]['value'] == '0') {
+
+      $delete[] = $submission->id;
+    }
+  }
+  if (!empty($delete)) {
+    entity_delete_multiple('submission', $delete);
+  }
+}
+
+function _ecard_admin_ga_get_template($template_nid) {
+  $ga_account = variable_get('ecard_ga', "");
+  if ($ga_account == "") {
+    return null;
+  }
+  $ga_pixel = "/ga.php";
+  global $base_url;
+
+  $url = $base_url;
+  $url .= $ga_pixel . "?";
+  $url .= "utmac=" . $ga_account;
+  $url .= "&utmn=" . rand(0, 0x7fffffff);
+
+  $node_path = "node/" . $template_nid;
+  $path = drupal_get_path_alias($node_path);
+  $referer = 'email-read';
+
+  if (empty($referer)) {
+    $referer = "-";
+  }
+  $url .= "&utmr=" . urlencode($referer);
+
+  if (!empty($path)) {
+    $url .= "&utmp=" . urlencode($path);
+  }
+
+  $url .= "&guid=ON";
+
+  return str_replace("&", "&amp;", $url);
+}
+
+function _ecard_admin_ga_get_campaign($campaign_nid) {
+  $ga_account = variable_get('ecard_ga', "");
+
+  if ($ga_account == "") {
+    return null;
+  }
+
+  $ga_pixel = "/ga.php";
+  global $base_url;
+
+  $url = $base_url;
+  $url .= $ga_pixel . "?";
+  $url .= "utmac=" . $ga_account;
+  $url .= "&utmn=" . rand(0, 0x7fffffff);
+
+  $node_path = "node/" . $campaign_nid;
+  $path = drupal_get_path_alias($node_path);
+  $referer = 'email-read';
+
+  if (empty($referer)) {
+    $referer = "-";
+  }
+  $url .= "&utmr=" . urlencode($referer);
+
+  if (!empty($path)) {
+    $url .= "&utmp=" . urlencode($path);
+  }
+
+  $url .= "&guid=ON";
+
+  return str_replace("&", "&amp;", $url);
+}
+
+/**
+ * Modify the drupal mail system to send HTML emails.
+ */
+class EcardAdminMailSystem implements MailSystemInterface {
+  /**
+   * Concatenate and wrap the e-mail body for plain-text mails.
+   *
+   * @param $message
+   *   A message array, as described in hook_mail_alter().
+   *
+   * @return
+   *   The formatted $message.
+   */
+  public function format(array $message) {
+    $message['body'] = implode("\n\n", $message['body']);
+    return $message;
+  }
+
+  /**
+   * Send an e-mail message, using Drupal variables and default settings.
+   *
+   * @see drupal_mail()
+   *
+   * @param $message
+   *   A message array, as described in hook_mail_alter().
+   * @return
+   *   TRUE if the mail was successfully accepted, otherwise FALSE.
+   */
+  public function mail(array $message) {
+    $mimeheaders = array();
+    foreach ($message['headers'] as $name => $value) {
+      $mimeheaders[] = $name . ': ' . mime_header_encode($value);
+    }
+    $line_endings = variable_get('mail_line_endings', MAIL_LINE_ENDINGS);
+    return mail(
+      $message['to'],
+      mime_header_encode($message['subject']),
+      // Note: e-mail uses CRLF for line-endings. PHP's API requires LF
+      // on Unix and CRLF on Windows. Drupal automatically guesses the
+      // line-ending format appropriate for your system. If you need to
+      // override this, adjust $conf['mail_line_endings'] in settings.php.
+      preg_replace('@\r?\n@', $line_endings, $message['body']),
+      // For headers, PHP's API suggests that we use CRLF normally,
+      // but some MTAs incorrectly replace LF with CRLF. See #234403.
+      join("\n", $mimeheaders)
+    );
+  }
+}

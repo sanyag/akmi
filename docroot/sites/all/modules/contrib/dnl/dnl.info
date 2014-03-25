@@ -1,0 +1,11 @@
+name = Disable "Language neutral"
+description = Disable "Language neutral" in creating the material.
+version = 1.0
+core = 7.x
+dependencies[] = translation
+; Information added by drupal.org packaging script on 2012-08-02
+version = "7.x-1.0"
+core = "7.x"
+project = "dnl"
+datestamp = "1343902908"
+

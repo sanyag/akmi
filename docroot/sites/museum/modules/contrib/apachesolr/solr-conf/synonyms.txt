@@ -1,0 +1,11 @@
+# synonmym mappings for AK Museum
+Shahnameh,Shahnamah,Shahnama,Shahname
+Qur'an,Quran,Koran
+Muslim,Moslem,Muslem,Moslim
+Muhammad,Muhamed,Mahomet,Mohamed,Mohamad
+Mecca,Meccah,Makkah,Makka
+Medina,Madinah,Medinah,Madina
+Shi'a,Shia,Shii
+Rustam,Rostam
+Gayumars,Kayumarth
+Ka'bah,Kabah,Kaba

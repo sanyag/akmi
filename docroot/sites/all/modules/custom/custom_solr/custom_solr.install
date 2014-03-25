@@ -1,0 +1,22 @@
+<?php
+/**
+ * @file
+ * installation file for custom_solr.
+ */
+
+/**
+ * Implements hook_install().
+ */
+function custom_solr_install() {
+  $schema['cache_akdn_custom'] = drupal_get_schema_unprocessed('system', 'cache');
+  db_create_table('cache_akdn_custom', $schema['cache_akdn_custom']);
+  return 'add cache_akdn_custom table';
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function custom_solr_uninstall() {
+  // Delete cache_akdn_custom table.
+  db_drop_table('cache_akdn_custom');
+}

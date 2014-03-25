@@ -1,0 +1,61 @@
+<?php
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ *
+ * Alter default Search form in order to submit to solr search.
+ *
+ * @param array $form
+ * @param array $form_state
+ * @param string $form_id
+ */
+function akdn_search_form_search_block_form_alter(&$form, &$form_state, $form_id) {
+  $form['search_block_form']['#title_display'] = 'after';
+  $form['actions']['submit']['#type'] = 'image_button';
+  $form['actions']['submit']['#button_type'] = 'submit';
+  $form['actions']['submit']['#attributes']['height'] = 15;
+  $form['actions']['submit']['#attributes']['class'] = array('go');
+  $form['actions']['submit']['#attributes']['id'] = array('search_button');
+  $form['actions']['submit']['#src'] = drupal_get_path('theme', 'ak_museum') . '/images/search-icon.png';
+}
+
+function akdn_search_apachesolr_index_document_build(ApacheSolrDocument $document, $entity, $entity_type) {
+  // watchdog('as', "<pre>".print_r($entity,1)."</pre>");
+
+  $type = node_type_get_type($entity);
+  switch($entity->type) {
+    case 'article':
+      $info[0] = "<div class='search-content-type'>" . render(field_view_field('node', $entity, 'field_article_cat', array('label' => 'hidden', 'type' => 'taxonomy_term_reference_plain'))) . "</div>";
+      $date = field_view_field('node', $entity, 'field_publish_date');
+      $info[1] = "<div class='search-date'>" . format_date($date['#items'][0]['value'], 'date_only') . "</div>";
+      break;
+
+
+    case 'publication':
+    case 'podcast':
+    case 'speech':
+    case 'gallery':
+
+      $info[0] = "<div class='search-content-type'>" . $type->name . "</div>";
+      $date = field_view_field('node', $entity, 'field_publish_date');
+      $info[1] = "<div class='search-date'>" . format_date($date['#items'][0]['value'], 'date_only') . "</div>";
+      break;
+
+    case 'event':
+      $info[0] = "<div class='search-content-type'>" . $type->name . "</div>";
+      $date = field_view_field('node', $entity, 'field_publish_date');
+      $info[1] = "<div class='search-date'>" . format_date($date['#items'][0]['value'], 'date_only') . "</div>";
+      break;
+
+    default:
+      $info[0] = "<div class='search-content-type'>" . $type->name . "</div>";
+      $info[1] = "<div class='search-date'>" . format_date($entity->created, 'date_only') . "</div>";
+      break;
+  }
+  $document->ss_node_search_info = implode(' - ', $info);
+}
+
+
+function akdn_search_apachesolr_query_alter(&$query, &$params, $caller) {
+  $query->addParam('fl', 'ss_node_search_info');
+}

@@ -1,0 +1,201 @@
+@import "mixins.less";
+
+body.page-search-site,
+body.page-collections-artefact-browser {
+  #page-title {
+    height: auto;
+  }
+  #block-system-main {
+    h2 {
+      margin-top: 20px;
+    }
+    .search-results {
+      list-style: none;
+      .group-left {
+        width: 529px;
+        margin-right: 30px;
+      }
+      .group-right {
+        width: 141px;
+      }
+      li.search-result {
+        border-bottom: 1px solid @bg-beige;
+        padding-bottom: 20px;
+        margin-bottom: 20px;
+      }
+    }
+  }
+  .block-facetapi {
+    margin-bottom: 15px;
+    h2 {
+      font-size: 14px;
+    }
+    select {
+      width: 215px;
+    }
+  }
+  .region-sidebar-second-inner {
+    margin-top: 115px;
+  }
+  #zone-content {
+    form#search-form {
+      ul {
+        margin: 15px 0 15px 20px;
+      }
+      input#edit-submit {
+        -webkit-appearance: button;
+        -webkit-border-radius: 0;
+        -webkit-background-clip: border-box;
+        -moz-border-radius: 0;
+        -moz-background-clip: border-box;
+        background-clip: border-box;
+        border-radius: 0;
+        background: @bg-beige;
+        color: #fff !important;
+        font-weight: normal;
+        cursor: pointer;
+        outline: 0;
+        &:hover {
+          background: @bg-dark-beige;
+          color: #FFF;
+        }
+      }
+    }
+    ul.pager {
+      background: transparent;
+      border: 2px solid @bg-beige;
+      border-radius: 0;
+      -webkit-border-radius: 0;
+      -moz-border-radius: 0;
+      padding: 5px;
+      li.pager-first,
+      li.pager-first a,
+      li.pager-previous,
+      li.pager-previous a,
+      li.pager-next,
+      li.pager-next a,
+      li.pager-last,
+      li.pager-last a,
+      li.pager-item,
+      li.pager-item a {
+        background: transparent;
+        color: @font-gray;
+        border: none;
+        border-radius: 0;
+        -webkit-border-radius: 0;
+        -moz-border-radius: 0;
+        &:hover {
+          background: @bg-beige;
+          color: #fff;
+          border: none;
+          border-radius: 0;
+          -webkit-border-radius: 0;
+          -moz-border-radius: 0;
+        }
+      }
+      li.pager-item {
+        border-right: 1px solid #FFF;
+        border-left: 1px solid @bg-beige;
+        &:hover {
+          border-right: 1px solid #FFF;
+          border-left: 1px solid #FFF;
+        }
+      }
+      li.pager-current {
+        background: @bg-beige;
+        color: #fff;
+        border: none;
+        border-radius: 0;
+        -webkit-border-radius: 0;
+        -moz-border-radius: 0;
+      }
+      li.pager-previous a {
+        width: 75px;
+      }
+      li.pager-last {
+        top: 5px;
+        right: 5px;
+      }
+      li.pager-next {
+        top: 5px;
+        right: 55px;
+      }
+    }
+  }
+}
+body.page-search-site .region-sidebar-second-inner {
+    margin-top: 90px;
+  }
+
+#zone-content {
+  ul.pager {
+  background: transparent;
+  border: 2px solid @bg-beige;
+  border-radius: 0;
+  -webkit-border-radius: 0;
+  -moz-border-radius: 0;
+  padding: 5px;
+  li.pager-first,
+  li.pager-first a,
+  li.pager-previous,
+  li.pager-previous a,
+  li.pager-next,
+  li.pager-next a,
+  li.pager-last,
+  li.pager-last a,
+  li.pager-item,
+  li.pager-item a {
+    background: transparent;
+    color: @font-gray;
+    border: none;
+    border-radius: 0;
+    -webkit-border-radius: 0;
+    -moz-border-radius: 0;
+    &:hover {
+      background: @bg-beige;
+      color: #fff;
+      border: none;
+      border-radius: 0;
+      -webkit-border-radius: 0;
+      -moz-border-radius: 0;
+    }
+  }
+  li.pager-item {
+    border-right: 1px solid #FFF;
+    border-left: 1px solid @bg-beige;
+    &:hover {
+      border-right: 1px solid #FFF;
+      border-left: 1px solid #FFF;
+    }
+  }
+  li.pager-current {
+    background: @bg-beige;
+    color: #fff;
+    border: none;
+    border-radius: 0;
+    -webkit-border-radius: 0;
+    -moz-border-radius: 0;
+  }
+  li.pager-previous a {
+    width: 75px;
+  }
+  li.pager-last {
+    top: 5px;
+    right: 5px;
+  }
+  li.pager-next {
+    top: 5px;
+    right: 55px;
+  }
+}
+}
+
+.node-hub-page.view-mode-search_result {
+  height: auto !important;
+  margin: 0 !important;
+  background: none;
+  .group-right {
+    height: auto;
+    padding: 0;
+  }
+}

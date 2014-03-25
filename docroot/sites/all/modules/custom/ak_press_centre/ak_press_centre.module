@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the AK Press Centre feature.
+ */
+
+include_once 'ak_press_centre.features.inc';

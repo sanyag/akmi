@@ -1,0 +1,45 @@
+<?php
+/**
+ * Implements hook_context_plugins().
+ *
+ */
+function ccontextc_context_plugins() {
+  $plugins = array();
+  $plugins['ccontextc_context_condition_enable_project_slider'] = array(
+    'handler' => array(
+      'path' => drupal_get_path('module', 'ccontextc'),
+      'file' => 'ccontextc_context_condition_enable_project_slider.inc',
+      'class' => 'ccontextc_context_condition_enable_project_slider',
+      'parent' => 'context_condition',
+    ),
+  );
+  return $plugins;
+}
+
+/**
+ * Implements hook_context_registry().
+ *
+ */
+function ccontextc_context_registry() {
+  return array(
+    'conditions' => array(
+      'enable_project_slider' => array(
+        'title' => t('enable_project_slider field'),
+        'description' => t('Set this context based on the value of enable_project_slider field.'),
+        'plugin' => 'ccontextc_context_condition_enable_project_slider',
+      ),
+    ),
+  );
+}
+
+/**
+ * Implements hook_node_view().
+ */
+function ccontextc_node_view($node, $view_mode) {
+  // Fire our context plugin when viewing nodes.
+  if ($view_mode == 'full') {
+    if ($plugin = context_get_plugin('condition', 'enable_project_slider')) {
+      $plugin->execute($node);
+    }
+  }
+}

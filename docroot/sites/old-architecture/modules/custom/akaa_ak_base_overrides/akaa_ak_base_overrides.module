@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the AKAA: AK Base Overrides feature.
+ */
+
+include_once 'akaa_ak_base_overrides.features.inc';

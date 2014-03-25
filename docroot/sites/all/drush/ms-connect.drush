@@ -1,0 +1,1336 @@
+<?php
+ 
+// GLOBAL VARS ///////////////////////////////////////////////////////
+global $db; // mssql connect container
+ 
+// ////////////////////////////////////////////////////////////////////
+ 
+ 
+ 
+ 
+/**
+ * configure PHP environment
+ * 
+ **/
+
+function configure_environment($args = array()) {
+  global $db;
+
+  // This is needed to get the correct dates on nodes
+  // should be Europe/Paris or dates will be parsed wrong
+  date_default_timezone_set(variable_get('date_default_timezone','Europe/Paris')); 
+
+  // Connect and set the global DB variable
+  $db = connect_to_server($args);
+
+}
+
+
+/**
+ * Connects to the MSSQL VBOX server
+ * @param - $args
+ *    An array of arguments from the command line
+ * @return - mssql connection
+ **/
+
+function connect_to_server($args) {
+  
+  error_reporting(E_ALL);
+  
+  /*mssql*/
+  $server_from="MAC\MSSQLSERVER";
+  $username_from="sa";
+  $password_from="root";
+  
+  
+  //FROM Connect to MSSQL
+  $link_from = mssql_connect($server_from, $username_from, $password_from);
+  $er = mssql_get_last_message();
+  if($er) { print $er; }
+  mssql_select_db('AKDN2');
+  
+  // Do a simple query, select the version of 
+  // MSSQL and print it.
+  // $version = mssql_query('SELECT * FROM BLOG');
+  // $row = mssql_fetch_array($version);
+
+  //  var_dump($row);
+
+  // Clean up
+  // mssql_free_result($version);
+  // 
+  // var_dump($link_from);
+  // var_dump($er);
+
+  return $link_from;
+}
+
+
+
+/**
+ * Migrate all content types
+ * A batch call for the command line
+ * 
+ **/
+
+function content_migrate_all($args = array()) {
+  content_migrate_speech();
+  content_migrate_general_news();
+  content_migrate_press_releases();
+  content_migrate_inthemedias();
+  content_migrate_blogs();
+  content_migrate_spotlights();
+  content_migrate_publications();
+  content_migrate_photosslideshows();
+  content_migrate_videos();
+  content_migrate_podcasts();
+  content_migrate_agencies();
+}
+
+
+
+/**
+ * Migrate content from the mssql db into the new Speech content type
+ * @param - $args
+ *    Array | an array of command line arguments
+ * 
+ **/
+
+function content_migrate_speech($args = array()) {
+
+  $results = _get_content_from_contentItem_table(3); // 3 is the id for the speech content type
+  
+  // Loop through the results
+  foreach($results as $key => $lang_array) {
+  
+    // $tnid = 0;  
+    $node = _generate_dummy_node_fields("speech"); // by default languages are english
+  
+    foreach($lang_array as $langID => $o) {
+            
+      $lang = _get_drupal_lang_value_from_lang_id($langID);
+      //$node = _generate_dummy_node_fields("speech", $lang);
+      
+      // Translation settings
+      if(!isset($node->language)) {
+        $node->language = $lang;
+        $node->translations->original = $lang;
+        $node->translations = new stdClass();
+        $node->translations->data = array();
+      }
+      
+      // Original Language Setting
+      $node->translations->original = $node->language;
+      
+      $node->translations->data[$lang] = array(
+        'entity_type' => 'node',
+        'entity_id' => isset($node->nid) ? $node->nid : 0,
+        'language' => $lang,
+        'source' => isset($node->nid) ? $node->language : '',
+        'uid' => 1,
+        'status' => 1,
+        'translate' => 0,
+        'created' => strtotime($o->DateAdded),
+        'changed' => strtotime($o->DateUpdated),
+      );
+
+      //$node->tnid = $tnid; // set the translation nid
+      if(!$node->created) { $node->created = strtotime($o->DateAdded); }
+      if(!$node->updated){ $node->updated = strtotime($o->DateUpdated); }
+      if(!$node->title) { $node->title = trim($o->ContentHeading); }
+      
+      
+      // Translateable title field
+      $node->title_field[$lang][0] = array(
+        'value' => trim($o->ContentHeading),
+        'format' => NULL,
+        'safe_value' => trim(check_plain($o->ContentHeading)),
+      );
+
+      $node->body[$lang][0]['summary'] = _content_migrate_rawtext_fixes($o->ContentSummary);
+      $node->body[$lang][0]['safe_summary'] = check_plain(_content_migrate_rawtext_fixes($o->ContentSummary));
+      $node->body[$lang][0]['value'] = _content_migrate_rawtext_fixes($o->ContentText);
+      $node->body[$lang][0]['safe_value'] = check_plain(_content_migrate_rawtext_fixes($o->ContentText));
+      $node->body[$lang][0]['format'] = 'full_html';      
+      
+
+// ----------------------------------------------------------------------------------------------------------------------------
+      
+      $pubDate = array();
+      if(strtotime($o->DateWritten)) {
+        $pubDate = array(
+          'value' => strtotime($o->DateWritten),
+          'timezone' => variable_get('date_default_timezone','Europe/Paris'),
+          'timezone_db' => 'UTC',
+          'date_type' => 'datestamp',
+        );
+      }
+      
+      // Common?
+      $node->field_publish_date[$lang][] = $pubDate;
+
+// ----------------------------------------------------------------------------------------------------------------------------
+
+
+      // ADDTL Fields
+      $node->field_speech_image = array();
+      $node->field_speech_location = array();
+      $node->field_speech_speaker = array();
+
+
+// ----------------------------------------------------------------------------------------------------------------------------
+
+      // ON FIRST PASS SAVE THE NODE FOR THE REMAINING TRANSLATIONS
+      if(!isset($node->nid)) { node_save($node); }
+
+    }
+    
+    
+    // Node save moved out to here in order to handle field translations instead of node based translations
+    // Also a couple of small fixes
+    if(!$node->title) { $node->title = "UNTITLED"; }
+    node_save($node);
+    
+  }
+    
+}
+
+
+/**
+ * Migrate content from the mssql db into the new Article content type from the old general news
+ * @param - $args
+ *    Array | an array of command line arguments
+ * 
+ **/
+
+function content_migrate_general_news($args = array()) {
+
+  $results = _get_content_from_contentItem_table(4); // 4 is the id for the General news type
+  
+  // Loop through the results
+  foreach($results as $key => $lang_array) {
+  
+    // $tnid = 0;  
+    $node = _generate_dummy_node_fields("article"); // by default languages are english
+  
+    foreach($lang_array as $langID => $o) {
+            
+      $lang = _get_drupal_lang_value_from_lang_id($langID);
+      //$node = _generate_dummy_node_fields("speech", $lang);
+      
+      // Translation settings
+      if(!isset($node->language)) {
+        $node->language = $lang;
+        $node->translations->original = $lang;
+        $node->translations = new stdClass();
+        $node->translations->data = array();
+      }
+      
+      // Original Language Setting
+      $node->translations->original = $node->language;
+      
+      $node->translations->data[$lang] = array(
+        'entity_type' => 'node',
+        'entity_id' => isset($node->nid) ? $node->nid : 0,
+        'language' => $lang,
+        'source' => isset($node->nid) ? $node->language : '',
+        'uid' => 1,
+        'status' => 1,
+        'translate' => 0,
+        'created' => strtotime($o->DateAdded),
+        'changed' => strtotime($o->DateUpdated),
+      );
+
+      //$node->tnid = $tnid; // set the translation nid
+      if(!$node->created) { $node->created = strtotime($o->DateAdded); }
+      if(!$node->updated){ $node->updated = strtotime($o->DateUpdated); }
+      if(!$node->title) { $node->title = trim($o->ContentHeading); }
+      
+      
+      // Translateable title field
+      $node->title_field[$lang][0] = array(
+        'value' => trim($o->ContentHeading),
+        'format' => NULL,
+        'safe_value' => trim(check_plain($o->ContentHeading)),
+      );
+
+      $node->body[$lang][0]['summary'] = _content_migrate_rawtext_fixes($o->ContentSummary);
+      $node->body[$lang][0]['safe_summary'] = check_plain(_content_migrate_rawtext_fixes($o->ContentSummary));
+      $node->body[$lang][0]['value'] = _content_migrate_rawtext_fixes($o->ContentText);
+      $node->body[$lang][0]['safe_value'] = check_plain(_content_migrate_rawtext_fixes($o->ContentText));
+      $node->body[$lang][0]['format'] = 'full_html';      
+      
+
+// ----------------------------------------------------------------------------------------------------------------------------
+      
+      $pubDate = array();
+      if(strtotime($o->DateWritten)) {
+        $pubDate = array(
+          'value' => strtotime($o->DateWritten),
+          'timezone' => variable_get('date_default_timezone','Europe/Paris'),
+          'timezone_db' => 'UTC',
+          'date_type' => 'datestamp',
+        );
+      }
+      
+      // Common?
+      $node->field_publish_date[$lang][] = $pubDate;
+
+// ----------------------------------------------------------------------------------------------------------------------------
+
+
+      // ADDTL Fields
+      $node->field_article_cat[$lang][0]['tid'] = '2';
+      $node->field_article_author = array();
+      $node->field_article_link = array();
+      $node->field_article_img = array();
+      $node->field_article_project = array();
+      
+      
+ // ----------------------------------------------------------------------------------------------------------------------------
+
+      // ON FIRST PASS SAVE THE NODE FOR THE REMAINING TRANSLATIONS
+      if(!isset($node->nid)) { node_save($node); }
+
+    }
+
+
+    // Node save moved out to here in order to handle field translations instead of node based translations
+    // Also a couple of small fixes
+    if(!$node->title) { $node->title = "UNTITLED"; }
+    node_save($node);
+
+  }
+
+}
+
+
+/**
+ * Migrate content from the mssql db into the new Article content type from the old press release
+ * @param - $args
+ *    Array | an array of command line arguments
+ * 
+ **/ 
+
+function content_migrate_press_releases() {
+  
+  $results = _get_content_from_contentItem_table(2); // 2 is the content id 
+  
+  // Loop through the results
+  foreach($results as $key => $lang_array) {
+  
+    // $tnid = 0;  
+    $node = _generate_dummy_node_fields("article"); // by default languages are english
+  
+    foreach($lang_array as $langID => $o) {
+            
+      $lang = _get_drupal_lang_value_from_lang_id($langID);
+      //$node = _generate_dummy_node_fields("speech", $lang);
+      
+      // Translation settings
+      if(!isset($node->language)) {
+        $node->language = $lang;
+        $node->translations->original = $lang;
+        $node->translations = new stdClass();
+        $node->translations->data = array();
+      }
+      
+      // Original Language Setting
+      $node->translations->original = $node->language;
+      
+      $node->translations->data[$lang] = array(
+        'entity_type' => 'node',
+        'entity_id' => isset($node->nid) ? $node->nid : 0,
+        'language' => $lang,
+        'source' => isset($node->nid) ? $node->language : '',
+        'uid' => 1,
+        'status' => 1,
+        'translate' => 0,
+        'created' => strtotime($o->DateAdded),
+        'changed' => strtotime($o->DateUpdated),
+      );
+
+      //$node->tnid = $tnid; // set the translation nid
+      if(!$node->created) { $node->created = strtotime($o->DateAdded); }
+      if(!$node->updated){ $node->updated = strtotime($o->DateUpdated); }
+      if(!$node->title) { $node->title = trim($o->ContentHeading); }
+      
+      
+      // Translateable title field
+      $node->title_field[$lang][0] = array(
+        'value' => trim($o->ContentHeading),
+        'format' => NULL,
+        'safe_value' => trim(check_plain($o->ContentHeading)),
+      );
+
+      $node->body[$lang][0]['summary'] = _content_migrate_rawtext_fixes($o->ContentSummary);
+      $node->body[$lang][0]['safe_summary'] = check_plain(_content_migrate_rawtext_fixes($o->ContentSummary));
+      $node->body[$lang][0]['value'] = _content_migrate_rawtext_fixes($o->ContentText);
+      $node->body[$lang][0]['safe_value'] = check_plain(_content_migrate_rawtext_fixes($o->ContentText));
+      $node->body[$lang][0]['format'] = 'full_html';      
+      
+
+// ----------------------------------------------------------------------------------------------------------------------------
+      
+      $pubDate = array();
+      if(strtotime($o->DateWritten)) {
+        $pubDate = array(
+          'value' => strtotime($o->DateWritten),
+          'timezone' => variable_get('date_default_timezone','Europe/Paris'),
+          'timezone_db' => 'UTC',
+          'date_type' => 'datestamp',
+        );
+      }
+      
+      // Common?
+      $node->field_publish_date[$lang][] = $pubDate;
+
+// ----------------------------------------------------------------------------------------------------------------------------
+
+
+      // ADDTL Fields
+      $node->field_article_cat[$lang][0]['tid'] = '4';
+      $node->field_article_author = array();
+      $node->field_article_link = array();
+      $node->field_article_img = array();
+      $node->field_article_project = array();
+      
+      
+ // ----------------------------------------------------------------------------------------------------------------------------
+
+      // ON FIRST PASS SAVE THE NODE FOR THE REMAINING TRANSLATIONS
+      if(!isset($node->nid)) { node_save($node); }
+
+    }
+
+
+    // Node save moved out to here in order to handle field translations instead of node based translations
+    // Also a couple of small fixes
+    if(!$node->title) { $node->title = "UNTITLED"; }
+    node_save($node);
+
+  }
+
+}
+
+
+/**
+ * Migrate content from the mssql db into the new Article content type from the old in the media
+ * @param - $args
+ *    Array | an array of command line arguments
+ * 
+ **/
+
+function content_migrate_inthemedias() {
+
+  $results = _get_content_from_contentItem_table(9); // 2 is the content id 
+
+  // Loop through the results
+  foreach($results as $key => $lang_array) {
+
+    // $tnid = 0;  
+    $node = _generate_dummy_node_fields("article"); // by default languages are english
+
+    foreach($lang_array as $langID => $o) {
+
+      $lang = _get_drupal_lang_value_from_lang_id($langID);
+      //$node = _generate_dummy_node_fields("speech", $lang);
+
+      // Translation settings
+      if(!isset($node->language)) {
+        $node->language = $lang;
+        $node->translations->original = $lang;
+        $node->translations = new stdClass();
+        $node->translations->data = array();
+      }
+
+      // Original Language Setting
+      $node->translations->original = $node->language;
+
+      $node->translations->data[$lang] = array(
+        'entity_type' => 'node',
+        'entity_id' => isset($node->nid) ? $node->nid : 0,
+        'language' => $lang,
+        'source' => isset($node->nid) ? $node->language : '',
+        'uid' => 1,
+        'status' => 1,
+        'translate' => 0,
+        'created' => strtotime($o->DateAdded),
+        'changed' => strtotime($o->DateUpdated),
+      );
+
+      //$node->tnid = $tnid; // set the translation nid
+      if(!$node->created) { $node->created = strtotime($o->DateAdded); }
+      if(!$node->updated){ $node->updated = strtotime($o->DateUpdated); }
+      if(!$node->title) { $node->title = trim($o->ContentHeading); }
+
+
+      // Translateable title field
+      $node->title_field[$lang][0] = array(
+        'value' => trim($o->ContentHeading),
+        'format' => NULL,
+        'safe_value' => trim(check_plain($o->ContentHeading)),
+      );
+
+      $node->body[$lang][0]['summary'] = _content_migrate_rawtext_fixes($o->ContentSummary);
+      $node->body[$lang][0]['safe_summary'] = check_plain(_content_migrate_rawtext_fixes($o->ContentSummary));
+      $node->body[$lang][0]['value'] = _content_migrate_rawtext_fixes($o->ContentText);
+      $node->body[$lang][0]['safe_value'] = check_plain(_content_migrate_rawtext_fixes($o->ContentText));
+      $node->body[$lang][0]['format'] = 'full_html';      
+
+
+// ----------------------------------------------------------------------------------------------------------------------------
+
+      $pubDate = array();
+      if(strtotime($o->DateWritten)) {
+        $pubDate = array(
+          'value' => strtotime($o->DateWritten),
+          'timezone' => variable_get('date_default_timezone','Europe/Paris'),
+          'timezone_db' => 'UTC',
+          'date_type' => 'datestamp',
+        );
+      }
+
+      // Common?
+      $node->field_publish_date[$lang][] = $pubDate;
+
+// ----------------------------------------------------------------------------------------------------------------------------
+
+
+      // ADDTL Fields
+      $node->field_article_cat[$lang][0]['tid'] = '2611';
+      $node->field_article_author = array();
+      $node->field_article_link = array();
+      $node->field_article_img = array();
+      $node->field_article_project = array();
+
+
+ // ----------------------------------------------------------------------------------------------------------------------------
+
+      // ON FIRST PASS SAVE THE NODE FOR THE REMAINING TRANSLATIONS
+      if(!isset($node->nid)) { node_save($node); }
+
+    }
+
+
+    // Node save moved out to here in order to handle field translations instead of node based translations
+    // Also a couple of small fixes
+    if(!$node->title) { $node->title = "UNTITLED"; }
+    node_save($node);
+
+  }
+
+}
+
+
+/**
+ * Migrate content from the mssql db into the new Article content type from the old blog
+ * @param - $args
+ *    Array | an array of command line arguments
+ * 
+ **/
+
+function content_migrate_blogs() {
+
+  $results = _get_content_from_contentItem_table(5); // 2 is the content id 
+
+  // Loop through the results
+  foreach($results as $key => $lang_array) {
+
+    // $tnid = 0;  
+    $node = _generate_dummy_node_fields("article"); // by default languages are english
+
+    foreach($lang_array as $langID => $o) {
+
+      $lang = _get_drupal_lang_value_from_lang_id($langID);
+      //$node = _generate_dummy_node_fields("speech", $lang);
+
+      // Translation settings
+      if(!isset($node->language)) {
+        $node->language = $lang;
+        $node->translations->original = $lang;
+        $node->translations = new stdClass();
+        $node->translations->data = array();
+      }
+
+      // Original Language Setting
+      $node->translations->original = $node->language;
+
+      $node->translations->data[$lang] = array(
+        'entity_type' => 'node',
+        'entity_id' => isset($node->nid) ? $node->nid : 0,
+        'language' => $lang,
+        'source' => isset($node->nid) ? $node->language : '',
+        'uid' => 1,
+        'status' => 1,
+        'translate' => 0,
+        'created' => strtotime($o->DateAdded),
+        'changed' => strtotime($o->DateUpdated),
+      );
+
+      //$node->tnid = $tnid; // set the translation nid
+      if(!$node->created) { $node->created = strtotime($o->DateAdded); }
+      if(!$node->updated){ $node->updated = strtotime($o->DateUpdated); }
+      if(!$node->title) { $node->title = trim($o->ContentHeading); }
+
+
+      // Translateable title field
+      $node->title_field[$lang][0] = array(
+        'value' => trim($o->ContentHeading),
+        'format' => NULL,
+        'safe_value' => trim(check_plain($o->ContentHeading)),
+      );
+
+      $node->body[$lang][0]['summary'] = _content_migrate_rawtext_fixes($o->ContentSummary);
+      $node->body[$lang][0]['safe_summary'] = check_plain(_content_migrate_rawtext_fixes($o->ContentSummary));
+      $node->body[$lang][0]['value'] = _content_migrate_rawtext_fixes($o->ContentText);
+      $node->body[$lang][0]['safe_value'] = check_plain(_content_migrate_rawtext_fixes($o->ContentText));
+      $node->body[$lang][0]['format'] = 'full_html';      
+
+
+// ----------------------------------------------------------------------------------------------------------------------------
+
+      $pubDate = array();
+      if(strtotime($o->DateWritten)) {
+        $pubDate = array(
+          'value' => strtotime($o->DateWritten),
+          'timezone' => variable_get('date_default_timezone','Europe/Paris'),
+          'timezone_db' => 'UTC',
+          'date_type' => 'datestamp',
+        );
+      }
+
+      // Common?
+      $node->field_publish_date[$lang][] = $pubDate;
+
+// ----------------------------------------------------------------------------------------------------------------------------
+
+
+      // ADDTL Fields
+      $node->field_article_cat[$lang][0]['tid'] = '1';
+      $node->field_article_author = array();
+      $node->field_article_link = array();
+      $node->field_article_img = array();
+      $node->field_article_project = array();
+
+
+ // ----------------------------------------------------------------------------------------------------------------------------
+
+      // ON FIRST PASS SAVE THE NODE FOR THE REMAINING TRANSLATIONS
+      if(!isset($node->nid)) { node_save($node); }
+
+    }
+
+
+    // Node save moved out to here in order to handle field translations instead of node based translations
+    // Also a couple of small fixes
+    if(!$node->title) { $node->title = "UNTITLED"; }
+    node_save($node);
+
+  }
+
+}
+
+    
+
+/**
+ * Migrate content from the mssql db into the new Article content type from the old spotlight
+ * @param - $args
+ *    Array | an array of command line arguments
+ * 
+ **/
+
+function content_migrate_spotlights() {
+
+  $results = _get_content_from_contentItem_table(7); // 2 is the content id 
+
+  // Loop through the results
+  foreach($results as $key => $lang_array) {
+  
+    // $tnid = 0;  
+    $node = _generate_dummy_node_fields("article"); // by default languages are english
+  
+    foreach($lang_array as $langID => $o) {
+            
+      $lang = _get_drupal_lang_value_from_lang_id($langID);
+      //$node = _generate_dummy_node_fields("speech", $lang);
+      
+      // Translation settings
+      if(!isset($node->language)) {
+        $node->language = $lang;
+        $node->translations->original = $lang;
+        $node->translations = new stdClass();
+        $node->translations->data = array();
+      }
+      
+      // Original Language Setting
+      $node->translations->original = $node->language;
+      
+      $node->translations->data[$lang] = array(
+        'entity_type' => 'node',
+        'entity_id' => isset($node->nid) ? $node->nid : 0,
+        'language' => $lang,
+        'source' => isset($node->nid) ? $node->language : '',
+        'uid' => 1,
+        'status' => 1,
+        'translate' => 0,
+        'created' => strtotime($o->DateAdded),
+        'changed' => strtotime($o->DateUpdated),
+      );
+
+      //$node->tnid = $tnid; // set the translation nid
+      if(!$node->created) { $node->created = strtotime($o->DateAdded); }
+      if(!$node->updated){ $node->updated = strtotime($o->DateUpdated); }
+      if(!$node->title) { $node->title = trim($o->ContentHeading); }
+      
+      
+      // Translateable title field
+      $node->title_field[$lang][0] = array(
+        'value' => trim($o->ContentHeading),
+        'format' => NULL,
+        'safe_value' => trim(check_plain($o->ContentHeading)),
+      );
+
+      $node->body[$lang][0]['summary'] = _content_migrate_rawtext_fixes($o->ContentSummary);
+      $node->body[$lang][0]['safe_summary'] = check_plain(_content_migrate_rawtext_fixes($o->ContentSummary));
+      $node->body[$lang][0]['value'] = _content_migrate_rawtext_fixes($o->ContentText);
+      $node->body[$lang][0]['safe_value'] = check_plain(_content_migrate_rawtext_fixes($o->ContentText));
+      $node->body[$lang][0]['format'] = 'full_html';      
+      
+
+// ----------------------------------------------------------------------------------------------------------------------------
+      
+      $pubDate = array();
+      if(strtotime($o->DateWritten)) {
+        $pubDate = array(
+          'value' => strtotime($o->DateWritten),
+          'timezone' => variable_get('date_default_timezone','Europe/Paris'),
+          'timezone_db' => 'UTC',
+          'date_type' => 'datestamp',
+        );
+      }
+      
+      // Common?
+      $node->field_publish_date[$lang][] = $pubDate;
+
+// ----------------------------------------------------------------------------------------------------------------------------
+
+
+      // ADDTL Fields
+      $node->field_article_cat[$lang][0]['tid'] = '2612';
+      $node->field_article_author = array();
+      $node->field_article_link = array();
+      $node->field_article_img = array();
+      $node->field_article_project = array();
+      
+      
+ // ----------------------------------------------------------------------------------------------------------------------------
+
+      // ON FIRST PASS SAVE THE NODE FOR THE REMAINING TRANSLATIONS
+      if(!isset($node->nid)) { node_save($node); }
+
+    }
+
+
+    // Node save moved out to here in order to handle field translations instead of node based translations
+    // Also a couple of small fixes
+    if(!$node->title) { $node->title = "UNTITLED"; }
+    node_save($node);
+
+  }
+
+}
+
+
+/**
+ * Migrate content from the mssql db into the new Publication content type from the old publication
+ * @param - $args
+ *    Array | an array of command line arguments
+ * 
+ **/
+
+function content_migrate_publications() {
+
+  $results = _get_publications_from_db();
+  
+  // Loop through the results
+  foreach($results as $key => $lang_array) {
+  
+    $node = _generate_dummy_node_fields("publication"); 
+  
+    foreach($lang_array as $lang => $o) {
+            
+      
+      // QUICK SANITIZR to remove " " strings
+      foreach($o as $k => $v) {
+        if(is_string($v)) {
+          $o->$k = trim($v);
+        }
+      }
+      
+// ----------------------------------------------------------------------------------------------------------------------------
+      
+      // Translation settings
+      if(!isset($node->language)) {
+        $node->language = $lang;
+        $node->translations->original = $lang;
+        $node->translations = new stdClass();
+        $node->translations->data = array();
+      }
+      
+      // Original Language Setting
+      $node->translations->original = $node->language;
+      
+      $node->translations->data[$lang] = array(
+        'entity_type' => 'node',
+        'entity_id' => isset($node->nid) ? $node->nid : 0,
+        'language' => $lang,
+        'source' => isset($node->nid) ? $node->language : '',
+        'uid' => 1,
+        'status' => 1,
+        'translate' => 0,
+        'created' => time(),
+        'changed' => time(),
+      );
+
+ 
+      if(!$node->title) { $node->title = trim($o->PUBtitle); }
+      
+      
+      // Translateable title field
+      $node->title_field[$lang][0] = array(
+        'value' => trim($o->PUBtitle),
+        'format' => NULL,
+        'safe_value' => trim(check_plain($o->PUBtitle)),
+      );
+
+// ----------------------------------------------------------------------------------------------------------------------------
+
+      // ADDTL Fields
+      
+      $node->field_publication_isbn = array();
+      $node->field_publication_purchase_link = array();
+      
+      // Publish Date
+      $pubDate = array();
+      if(strtotime($o->PUByear)) {
+        
+        // Date formats are either 0, 2011, 201109 (yyyymm)
+        if(strlen($o->PUByear) > 4) {
+          $date = substr($o->PUByear, 4) . "/" . substr($o->PUByear,-2);  
+        } else if(!$o->PUByear) {
+          $date = time(); // now
+        } else {
+          $date = $o->PUByear;
+        }
+        
+      
+        $pubDate = array(
+          'value' => strtotime($date),
+          'timezone' => variable_get('date_default_timezone','Europe/Paris'),
+          'timezone_db' => 'UTC',
+          'date_type' => 'datestamp',
+        );
+      }
+      
+      $node->field_publish_date[$lang][] = $pubDate;
+
+      // TODO: GET THESE ITEMS WORKING
+      // Image and Document
+      if(!empty($o->PUBimage)) {
+        $image_file = _get_import_file($o->PUBimage);
+        $node->field_publication_image[$lang][] = $image_file;
+      }
+      $node->field_publication_file = array();
+
+      
+
+
+      // Taxonomies
+      if(!empty($o->PUBcategory)) {
+        $term_cat = _get_create_translated_term($lang, 'publication_category', $o->PUBcategory);
+        $node->field_publication_category[$lang][]['tid'] = $term_cat->tid;
+      }
+      
+      if(!empty($o->PUBtype)) {
+        $term_type = _get_create_translated_term($lang, 'publication_type', $o->PUBtype);
+        $node->field_publication_type[$lang][]['tid'] = $term_type->tid;
+      }
+      
+      if(!empty($o->PUBagency)) {
+        $term_agency = _get_create_translated_term($lang, 'agencies', $o->PUBagency);
+        $node->field_agency[$lang][]['tid'] = $term_agency->tid;
+      }
+      
+      if(!empty($o->PUBcountry)) {
+        $term_country = _get_create_translated_term($lang, 'countries', $o->PUBcountry);
+        $node->field_country[$lang][]['tid'] = $term_country->tid;
+      }
+      
+      
+ // ----------------------------------------------------------------------------------------------------------------------------
+
+      // ON FIRST PASS SAVE THE NODE FOR THE REMAINING TRANSLATIONS
+      if(!isset($node->nid)) { node_save($node); }
+
+    }
+    
+    // Node save moved out to here in order to handle field translations instead of node based translations
+    // Also a couple of small fixes
+    if(!$node->title) { $node->title = "UNTITLED"; }
+    node_save($node);
+
+  }
+  
+  
+}
+
+/**
+ * Migrate content from the mssql db into the new photos & slideshows content type from the old gallery
+ * @param - $args
+ *    Array | an array of command line arguments
+ * 
+ **/
+
+function content_migrate_photosslideshows() {
+  
+}
+
+/**
+ * Migrate content from the mssql db into the new podcast content type from the old videos
+ * @param - $args
+ *    Array | an array of command line arguments
+ * 
+ **/
+
+function content_migrate_videos() {
+  
+}
+
+/**
+ * Migrate content from the mssql db into the new podcast content type from the old postcasts
+ * @param - $args
+ *    Array | an array of command line arguments
+ * 
+ **/
+
+function content_migrate_podcasts() {
+  
+}
+
+/**
+ * Migrate content from the mssql db into the new agency content type from the old agency
+ * @param - $args
+ *    Array | an array of command line arguments
+ * 
+ **/
+
+function content_migrate_agencies() {
+  
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// HELPER FUNCTIONS
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Generates a generic node template
+ * @param - $type
+ *    String | The content type name
+ * @param - $lang
+ *    String | The string value of the default language
+ * @return - object
+ *    A generic array of common node object values
+ **/
+
+function _generate_dummy_node_fields($type = 'article', $lang = LANGUAGE_NONE) {
+  $obj = new stdClass();
+    
+  $obj->title = '';
+  $obj->log = '';
+  $obj->status = 1;
+  $obj->comment = 0;
+  $obj->promote = 0;
+  $obj->sticky = 0;
+  $obj->type = $type;
+//  $obj->language = $lang;
+  $obj->created = 0;
+  $obj->changed = 0;
+  $obj->translate = 0;
+  // $obj->body = array(
+  //   LANGUAGE_NONE => array(
+  //     0 => array(
+  //       'value' => '',
+  //       'summary' => '',
+  //       'format' => 'full_html',
+  //       'safe_value' => '',
+  //       'safe_summary' => '',
+  //     )
+  //   )
+  // );
+  $obj->metatags = array();
+  $obj->print_display = 1;
+  $obj->print_display_comment = 0;
+  $obj->print_display_urllist = 1;
+  $obj->name = 'admin';
+  $obj->uid = 1;
+  $obj->picture = 0;
+  $obj->print_mail_display = 1;
+  $obj->print_mail_display_comment = 0;
+  $obj->print_mail_display_urllist = 1;
+  $obj->data = array('overlay'=>1);
+
+  
+  // COMMON
+  $obj->field_tags = array();
+  $obj->field_country = array();
+  $obj->field_agency = array();
+  $obj->field_focus_area = array();
+  $obj->field_caption = array();
+  $obj->field_featured_image = array();
+  $obj->field_create_featured_content = array();
+  
+  $obj->is_new = TRUE;
+  
+  return $obj;
+}
+
+
+
+
+/**
+ * Makes adjustments to raw text blobs in order to correct urls and images
+ * @param - $blob
+ *    The html input generally for the body
+ * @return - string
+ *    The html output of the fixed urls
+ * 
+ **/
+
+function _content_migrate_rawtext_fixes($blob = '') {
+  
+  // do stuff to the blob like correct URLS and Image Paths...
+  
+  return $blob;
+}
+
+
+
+
+/**
+ * Fetches a unique set of results from the contentItem table by content type (ContentTypeID). 
+ * It joins in the ContentLanguage Table to get the translations as well
+ * @param - $id
+ *  integer | The content type id
+ * 
+ * @return - (array) | a unique array of keyed database results eg [a1b2c3] => dbesultObject
+ **/
+
+function _get_content_from_contentItem_table($id) {
+  $results = array();
+  $i = 0;
+  
+  // SELCT QUERY
+  $rawq = mssql_query('SELECT ci.* FROM ContentItem ci WHERE ci.ContentTypeID = '.$id.' ORDER BY ci.ContentID ASC');
+  
+  // Count the results
+  $count = mssql_num_rows($rawq);
+  if(!$count) { drush_log('ERROR: No results found for speech content type','error'); return; }
+  
+  // Start looping through the database result data
+  while($o = mssql_fetch_object($rawq)) {
+  
+    $o->LanguageID = 0;
+    
+    // A unique set of field column values as one string
+    $key = md5($o->StrFlag2.$o->ContentHeading.$o->DateAdded);
+ 
+    // Add item to array by key to eliminate dupes
+    $results[$key][$o->LanguageID] = $o;
+        
+    // Find translations
+    $rawql = mssql_query("SELECT * FROM ContentLanguage WHERE ContentID = " . $o->ContentID . " AND LanguageID != 0 ORDER BY CLID");
+    $count = mssql_num_rows($rawql);
+    if(!$count) { continue; }
+    
+    while($o2 = mssql_fetch_object($rawql)){
+      
+      // MAP translation content into node object values
+      $no = clone($o); // make a copy so that we are not changing all values
+      $no->LanguageID = $o2->LanguageID;
+      $no->ContentHeading = $o2->ContentHeading;
+      $no->ContentSummary = $o2->ContentSummary;
+      $no->ContentText = $o2->ContentText;
+      
+      // Add item to array by key to eliminate dupes
+      $results[$key][$o2->LanguageID] = $no;
+      
+    }
+  
+  }
+  
+  return $results;
+}
+
+
+/**
+ * Get Content from the Publications table and store it in an array
+ * @return - array | Array of mssql result objects or empty array if none
+ * 
+ **/
+
+function _get_publications_from_db() {
+  $results = array();
+  $map = array(); // storage for an alternate set of keys. 
+  
+  $rawq = mssql_query('SELECT TOP 10 * FROM PUBLICATIONS WHERE ID < 555 AND ID > 540 ORDER BY ID');
+  while($o = mssql_fetch_object($rawq)) {
+        
+    // We have multiple keys in order to match up entries with their language translations
+    $str1 = $o->PUBtitle . $o->PUBagency . $o->PUByear;
+    $str2 = $o->PUBagency . $o->PUByear . $o->PUBtype . $o->PUBimage;
+    $key = md5($str1);
+    $key2 = md5($str2);
+
+    
+    // Get the language
+    $lang = _get_drupal_lang_value_from_full_string($o->PUBlanguage);    
+    
+    // If the second key exists we only want to match up a translation
+    // Get the first key if there is a match
+    if(array_key_exists($key2, $map)) {    
+      if(!isset($results[$map[$key2]][$lang])) {
+        $key = $map[$key2];
+      }
+    } else {
+      
+      // no match store a new mapping
+      $map[$key2] = $key;
+    }
+    
+    // Store the results
+    $results[$key][$lang] = $o;
+    
+  }
+
+  return $results;
+}
+
+
+
+
+/**
+ * Translates the Language ID from the AKDN db into a drupal string
+ * @param - $langID
+ *  int | the language id #
+ * 
+ * @return - string | the drupal language value eg: und, fr, en
+ * 
+ **/
+
+function _get_drupal_lang_value_from_lang_id($langID = 0) {
+    
+  $vals = array(
+    0 => "en", // english
+    1 => "fr", // french
+    2 => "de", // german
+    3 => 'it', // italian
+    4 => 'es', // spanish
+    5 => 'pt', // portuguese
+    6 => 'ru', // russion
+    7 => 'ar', // arabic
+    8 => 'tg', // tajik
+  );
+  
+  if(isset($vals[$langID])) { return $vals[$langID]; } // found a lang
+  return LANGUAGE_NONE; // undefined lang
+}
+
+
+/**
+ * Translates a full string name of a language eg "English" to 
+ * the 2 character code
+ * @param - $language | String
+ *  The full name of the language
+ * @return - String
+ *  The Two character code
+ * 
+ **/
+
+function _get_drupal_lang_value_from_full_string($language) {
+  
+  $langID = strtolower($language);
+  
+  $vals = array(
+    'english'       => "en", // english
+    'french'        => "fr", // french
+    'français'      => "fr", // french
+    'german'        => "de", // german
+    'italian'       => 'it', // italian
+    'spanish'       => 'es', // spanish
+    'portuguese'    => 'pt', // portuguese
+    'russian'       => 'ru', // russion
+    'arabic'        => 'ar', // arabic
+    'tajik'         => 'tg', // tajik
+    'farsi'         => 'fa', // Persian
+    'malay'         => 'ms', // Malay
+    'dari'          => 'fa', // Persian
+  );
+  
+  if(isset($vals[$langID])) { return $vals[$langID]; } // found a lang
+  return LANGUAGE_NONE; // undefined lang
+  
+}
+
+
+
+
+/**
+ * Quick helper function to get an array of all the enabled language objects
+ * @return array | an array of language objects
+ **/
+ 
+function _get_languages() {
+  $langs = language_list();
+ // var_dump($langs);
+  return $langs;
+}
+
+
+/**
+ * A get/create and return function for taxonomy terms
+ * @param - $lang
+ *    String | The character code
+ * @param - $vocab
+ *    String | The vocabulary machine id
+ * @param - $name
+ *    String | The text value of the vocabulary term
+ * @return | TermObject
+ * 
+ **/
+
+function _get_create_translated_term($lang, $vocab, $name) {
+
+  $term = taxonomy_get_term_by_name($name, $vocab);
+    
+  // If we dont find a term we need to create one
+  if(!count($term)) {
+    $vocab = taxonomy_vocabulary_machine_name_load($vocab);
+    
+    $term = new stdClass();
+    $term->name = $name;
+    $term->vid = $vocab->vid;
+    taxonomy_term_save($term);
+    return $term;
+  }
+  
+  // We found one on the inital lookup return it
+  return reset($term);
+}
+
+
+/**
+ * This function adjusts database paths to proper server paths
+ * and imports the file into the files/media system
+ * @param - $url
+ *   String | The db path to the server
+ * @param - $data
+ *  Array | An array of additional arguments or data
+ *    'ext' | is because the server never stores file extensions
+ *    'type' | file type. Usually image
+ *    'mimetype' | the file mimetype
+ *    'base_path' | a server path to prepend to the db path 
+ * @return | file_object
+ **/
+
+function _get_import_file($url, $data = array()) {
+  $debug = TRUE; // turn off when running for real
+  $default_args = array(
+    'ext'=>'.jpg',
+    'type'=>'image',
+    'mimetype' => 'image/jpeg',
+    'field_media_folder' => 'dummy',
+  );
+  $args = array_merge($default_args, $data);
+  
+  $url = ltrim($url, "/"); // remove any preceeding slashes
+  $url = $url . $args['ext']; // add the default extension
+  
+  // Add base path
+  if(isset($args['base_path'])) {
+    $url = $args['base_path'] . "/" . $url;
+  }
+  
+  // If the file doesnt exist and we are not in debug log an error
+  if(!file_exists($url) && !$debug) {
+    drush_log('ERROR: could not file file - ' . $url, 'error');
+    return new stdClass();
+  }
+  
+  // If file doesnt exist and we must be in debug use default files
+  if(!file_exists($url)) {
+    $url ="migration/akdn" . $args['ext'];
+  }
+  
+  
+  
+  // We now have a path to a file that we want to move into the drupal system.
+  $filename = end(explode('/',$url));
+  $source = new stdClass();
+  //$source->filepath = $url;
+  $source->filename = $filename;
+  $source->uri = file_build_uri($url);
+  
+  $dest = $args['field_media_folder'];
+  $rdy = file_prepare_directory($dest, FILE_CREATE_DIRECTORY);  
+  
+  $destination = file_build_uri($dest);
+  
+  // New file
+  $file = file_copy($source, $destination);
+  
+  // ADD new fields
+  
+  // TODO:  add the additional fields to the file object
+  
+  
+  return $file;
+}
+
+function get_file($args) {
+  $f = _get_import_file('dummy');
+  var_dump($f);
+}
+
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * INITIALIZR
+ * Runs stuff
+ **/
+ 
+$args = drush_get_arguments();
+configure_environment($args); // setup 
+
+if(function_exists($args[2])) {
+  $args[2]($args);
+  drush_log('completed running', 'ok');
+} else {
+  drush_log('Could not find drush script command', 'error');
+}
+
+

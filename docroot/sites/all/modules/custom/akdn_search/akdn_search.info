@@ -1,0 +1,8 @@
+core = "7.x"
+description = "Custom search functionality for the AKDN sites."
+name = "AKDN Search"
+package = "AKDN"
+version = "7.x-1.0"
+
+files[] = akdn_search.module
+scripts[] = js/akdn_search.js

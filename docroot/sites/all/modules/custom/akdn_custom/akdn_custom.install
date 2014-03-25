@@ -1,0 +1,49 @@
+<?php
+
+/**
+ * Implements hook_install().
+ */
+function akdn_custom_install() {
+  db_update('system')
+    ->fields(array('weight' => 100))
+    ->condition('name', 'akdn_custom')
+    ->execute();
+}
+
+/**
+ * Implements hook_update().
+ */
+function akdn_custom_update_7100($node) {
+  db_update('system')
+    ->fields(array('weight' => 100))
+    ->condition('name', 'akdn_custom')
+    ->execute();
+}
+
+/**
+ * Implements hook_update().
+ */
+function akdn_custom_update_7101() {
+	if (!db_table_exists("project_carousel_exceptions")) {
+		drupal_install_schema('akdn_custom');
+	}
+}
+
+/**
+ * Implements hook_schema().
+ */
+function akdn_custom_schema() {
+	$schema['project_carousel_exceptions'] = array(
+		'description' => 'The table containing information on what pages need the project carousel to be hidden from.',
+		'fields' => array(
+			'url' => array(
+				'description' => 'URL to the page to be excluded from Project Carousel display.',
+				'type' => 'varchar',
+				'length' => 255,
+				'not null' => TRUE,
+			),
+		),
+		'primary key' => array('url'),
+	);
+	return $schema;
+}

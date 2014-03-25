@@ -1,0 +1,5 @@
+name = 'AKDN mailshot'
+description = ''
+core = '7.x'
+engine = 'phptemplate'
+stylesheets[all][] = style.css

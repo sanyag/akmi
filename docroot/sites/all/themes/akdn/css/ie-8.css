@@ -1,0 +1,81 @@
+.view-press-center.view-display-id-block_2 {
+  border: 0 !important;
+  margin: 0 !important;
+}
+
+#block-block-14 {
+  display: none !important;
+}
+#block-menu-block-6,
+#block-block-17 {
+  height: auto !important;
+  display: block !important;
+}
+
+#block-delta-blocks-logo {
+  display: block !important;
+  float: left;
+  width: 140px;
+  margin-top: -10px;
+}
+#block-delta-blocks-logo .content .logo-img {
+  padding: 0 0 0 28px;
+}
+#block-delta-blocks-logo .content img {
+  width: 85px;
+  height: 39px;
+}
+
+.pane-featured-slideshow {
+  float: left;
+}
+.pane-menu-block-2 h2.pane-title {
+  font-size: 14px !important;
+  color: #000 !important;
+  padding-bottom: 5px;
+  border-bottom: 1px dashed #d9caac;
+}
+.pane-menu-block-2 ul.menu li {
+  margin: 0;
+  min-width: 150px;
+  padding: 5px 0;
+  list-style: none;
+  background: none;
+  border-bottom: 1px dashed #d9caac;
+}
+.pane-addthis-addthis {
+  display: block !important;
+  float: right !important;
+}
+.pane-addthis-addthis .custom-addthis-button {
+  display: inline-block;
+  color: #B49759;
+  padding-left: 12px;
+  margin-top: 10px;
+  padding-bottom: 5px;
+  background: url('/sites/all/themes/akdn/images/share_icons.png') no-repeat 0 -1px;
+}
+.pane-block-29 {
+  display: block !important;
+  float: right !important;
+}
+.pane-block-29 .print_html a {
+  display: inline-block;
+  color: #B49759;
+  padding-left: 12px;
+  margin-top: 10px !important;
+  padding-right: 5px;
+  padding-bottom: 5px;
+  background: url('/sites/all/themes/akdn/images/share_icons.png') no-repeat 0 -33px;
+}
+.pane-block-29 .print_mail a {
+  color: #B49759;
+  padding-left: 12px;
+  margin-top: 10px;
+  padding-right: 5px;
+  padding-bottom: 5px;
+  background: url('/sites/all/themes/akdn/images/share_icons.png') no-repeat 0 -16px;
+}
+#section-footer #block-menu-block-2 {
+  display: none;
+}

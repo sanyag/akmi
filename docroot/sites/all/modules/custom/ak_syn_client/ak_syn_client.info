@@ -1,0 +1,7 @@
+name = AKDN Syndication Client
+description = AKDN specific chnages to the syndication Client
+package = Syndication
+version = "7.x-1.0"
+core = 7.x
+dependencies[] = "syndication_client"
+files[] = ak_syn_client.module

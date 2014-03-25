@@ -1,0 +1,6 @@
+name = Media Edit Fields
+description = Adds a Media field editing step to the Media browser
+package = Media
+core = 7.x
+
+dependencies[] = media

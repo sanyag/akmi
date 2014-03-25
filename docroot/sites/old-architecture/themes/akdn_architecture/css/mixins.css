@@ -1,0 +1,33 @@
+.no_mp {
+  margin: 0;
+  padding: 0;
+}
+.no_bullets {
+  list-style: none;
+  list-style-image: none;
+}
+.inline-block {
+  display: -moz-inline-stack;
+  display: inline-block;
+  vertical-align: top;
+  zoom: 1;
+  *display: inline;
+}
+/*Transformations*/
+/**
+ * This mixin will make the HTML list view format's <li>'s float left as inline.
+ */
+.views_html_list_float_left .view-content > .item-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  list-style-image: none;
+}
+.views_html_list_float_left .view-content > .item-list ul li {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  list-style-image: none;
+  float: left;
+  margin-right: 5px;
+}

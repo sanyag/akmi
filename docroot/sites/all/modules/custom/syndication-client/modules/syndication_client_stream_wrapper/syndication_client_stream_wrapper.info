@@ -1,0 +1,7 @@
+name = Syndication Client File Stream Wrapper
+description = File Stream Wrapper for the Syndication Client to connect to the remote syndication server files
+package = Syndication
+version = "7.x-1.0"
+core = 7.x
+files[] = syndication_client_stream_wrapper.module
+dependencies[] = "syndication_client"

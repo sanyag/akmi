@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the AKAA Maps feature.
+ */
+
+include_once 'akaa_maps.features.inc';

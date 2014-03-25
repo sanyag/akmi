@@ -1,0 +1,38 @@
+/* Search label position */
+#section-header #region-menu label.infield {
+  margin-top: -2px;
+}
+#section-header #region-menu .form-submit {
+  margin-top: 3px;
+}
+/* Page title fix */
+#page-title span.clearfix {
+  display: block;
+}
+/* Frontpage flexinav */
+.flex-nav-container ul.slides .slide-inner {
+  width: auto !important;
+  padding-top: 8px;
+}
+/* Hub page thumbnails */
+.view-hub-page-content.view-display-id-block .views-field-field-image {
+  position: absolute;
+}
+/* Main image position on articles */
+body.article-node-panel .region-content-inner .pane-node-field-image {
+  margin-top: -55px;
+}
+/* Collection page search form */
+#block-views-collections-block-1 #search-form-wrapper form label {
+  margin-top: -5px;
+}
+#block-views-collections-block-1 #search-form-wrapper form .form-submit {
+  margin-top: -23px;
+}
+/* Gallery fixes */
+body.node-type-gallery .section-content .pane-node-field-gallery-images {
+  padding-bottom: 30px;
+}
+#ak-gallery .rsGCaption .copyright {
+  left: 0;
+}

@@ -1,0 +1,13 @@
+diff --git a/media_browser_plus.module b/media_browser_plus.module
+index 6ec09ac..7130ce4 100644
+--- a/media_browser_plus.module
++++ b/media_browser_plus.module
+@@ -656,7 +656,7 @@ function media_browser_plus_menu() {
+  */
+ function media_browser_plus_menu_alter(&$items) {
+   $items['admin/content/file']['access arguments'] = array('access media backend');
+-  $items['admin/content/file']['access callback'] = array('media_browser_plus_access');
++  $items['admin/content/file']['access callback'] = 'media_browser_plus_access';
+ }
+ 
+ /**

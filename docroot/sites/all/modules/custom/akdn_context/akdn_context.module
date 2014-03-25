@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the AKDN context feature.
+ */
+
+include_once 'akdn_context.features.inc';

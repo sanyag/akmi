@@ -1,0 +1,1281 @@
+<?php
+
+/**
+ * Implements hook_init().
+ */
+function akdn_custom_init() {
+  $drupal_get_path = drupal_get_path('module', 'akdn_custom');
+
+  if (arg(0) == 'media' && arg(1) == 'browser') {
+    drupal_add_css($drupal_get_path . '/css/akdn-media-library.css');
+  }
+
+  drupal_add_library('system', 'ui.slider');
+  drupal_add_css($drupal_get_path . '/skins/akdn/jcarousel-akdn.css');
+  drupal_add_css($drupal_get_path . '/skins/akdn/jcarousel-akdn-narrow.css');
+  drupal_add_css($drupal_get_path . '/css/ui.slider.extras.css');
+  drupal_add_css($drupal_get_path . '/css/akdn_custom.css');
+  drupal_add_js($drupal_get_path . '/js/jquery.jcarousel.js');
+  drupal_add_js($drupal_get_path . '/js/akdn_custom.js');
+  drupal_add_js($drupal_get_path . '/js/jquery.parss.uncompressed.js');
+}
+
+/**
+ * Implements hook_menu().
+ */
+function akdn_custom_menu() {
+  $items['admin/config/regional/language/switcher'] = array(
+      'title' => 'Switcher Settings',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('akdn_custom_switcher_settings'),
+      'access arguments' => array('administer languages'),
+      'type' => MENU_LOCAL_TASK,
+  );
+  $items['admin/config/system/project_carousel'] = array(
+      'title' => 'Project Carousel Admin Page',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('akdn_custom_project_carousel_admin'),
+      'access arguments' => array('administer languages'),
+      'type' => MENU_NORMAL_ITEM,
+      'file' => 'akdn_custom.admin.inc',
+  );
+  $items['admin/config/services/akdn'] = array(
+      'title' => 'Akdn - Configuration settings',
+      'description' => 'set various configurations',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('akdn_custom_config'),
+      'access arguments' => array('administer'),
+      'type' => MENU_NORMAL_ITEM,
+  );
+  // @TODO add config page/form for image style names.
+  /* $items['admin/config/media/image-style-names'] = array(
+    'title' => 'Image Style Names',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('image_style_names_form'),
+    'access arguments' => array('administer image styles'),
+    'type' => MENU_NORMAL_ITEM,
+    ); */
+  return $items;
+}
+
+/**
+ * Implements hook_preprocess_page().
+ */
+function akdn_custom_preprocess_page(&$vars, $hook) {
+  /* $node = node_load(3318);
+    dpm($node); */
+  /* $current_node = menu_get_object();
+    $current_page_view = views_get_page_view();
+
+    if (isset($current_page_view)) {
+    if (in_array($current_page_view->name, array("press_releases","articles","speeches","projects","publications", "galleries","podcasts","events","akaa_projects","people_listing")) || (isset($current_node->nid) && $current_node->type == 'speech_theme')) {
+    drupal_add_js(drupal_get_path('module', 'akdn_custom') . '/js/chosen/chosen.jquery.js');
+    drupal_add_css(drupal_get_path('module', 'akdn_custom') . '/js/chosen/chosen.css');
+    }
+    } elseif (in_array($current_node->type, array("award_cycle","architecture_project"))) {
+    drupal_add_js(drupal_get_path('module', 'akdn_custom') . '/js/chosen/chosen.jquery.js');
+    drupal_add_css(drupal_get_path('module', 'akdn_custom') . '/js/chosen/chosen.css');
+    } elseif ($current_node->type == "agency" && $current_node->title == "Aga Khan Awards for Architecture") {
+    drupal_add_js(drupal_get_path('module', 'akdn_custom') . '/js/chosen/chosen.jquery.js');
+    drupal_add_css(drupal_get_path('module', 'akdn_custom') . '/js/chosen/chosen.css');
+    } elseif ($current_node->type == "page") {
+    $path_first_level = explode('/',$current_node->path['alias']);
+    if ($path_first_level[0] == 'architecture') {
+    drupal_add_js(drupal_get_path('module', 'akdn_custom') . '/js/chosen/chosen.jquery.js');
+    drupal_add_css(drupal_get_path('module', 'akdn_custom') . '/js/chosen/chosen.css');
+    }
+    } elseif (in_array($current_node->type, array("agency","speech_theme"))) {
+    $path_first_level = explode('/',$current_node->path['alias']);
+    if ($path_first_level[0] == 'architecture') {
+    drupal_add_js(drupal_get_path('module', 'akdn_custom') . '/js/chosen/chosen.jquery.js');
+    drupal_add_css(drupal_get_path('module', 'akdn_custom') . '/js/chosen/chosen.css');
+    }
+    } */
+  drupal_add_js(drupal_get_path('module', 'akdn_custom') . '/js/chosen/chosen.jquery.js');
+  drupal_add_css(drupal_get_path('module', 'akdn_custom') . '/js/chosen/chosen.css');
+}
+
+/**
+ * Implements hook_form().
+ */
+function akdn_custom_switcher_settings($form, &$form_state) {
+  $all_langs = locale_language_list('name');
+
+  $form['akdn_custom_switcher_lang'] = array(
+      '#type' => 'checkboxes',
+      '#title' => t('What languages should be used as the default set on listing pages?'),
+      '#options' => $all_langs,
+      '#default_value' => variable_get('akdn_custom_switcher_lang', array()),
+  );
+  return system_settings_form($form);
+}
+
+/**
+ * Implements hook_custom_views_query_alter().
+ */
+function akdn_custom_views_query_alter(&$view, &$query) {
+  // Changes inner join to left join in press center block view to handle the
+  // and/or filters properly.
+  if ($view->name == 'press_center' && ($view->current_display == 'block_2' || $view->current_display == 'block_3')) {
+    $query->table_queue['taxonomy_index']['join']->type = 'LEFT';
+  }
+
+  // Fix a bug in workbench where it will use an INNER JOIN instead of LEFT.
+  // Also create the relation based on the node id, not the revision id to get only one result.
+  if ($view->name == 'admin_content' && $view->current_display == 'page') {
+    $query->table_queue['workbench_moderation_node_history']['join']->type = 'LEFT';
+    $query->table_queue['workbench_moderation_node_history']['join']->left_table = 'node';
+    $query->table_queue['workbench_moderation_node_history']['join']->left_field = 'nid';
+    $query->table_queue['workbench_moderation_node_history']['join']->field = 'nid';
+  }
+  if ($view->name == 'press_center' && $view->current_display == 'block') {
+    $query->orderby = array(
+        array(
+            'field' => 'CASE WHEN field_data_field_publish_date_field_publish_date_value
+        THEN field_data_field_publish_date_field_publish_date_value
+        WHEN field_data_field_event_date_field_event_date_value
+        THEN field_data_field_event_date_field_event_date_value
+        ELSE node.created END',
+            'direction' => 'DESC',
+        )
+    );
+  }
+}
+
+/**
+ * Implements hook_views_pre_render().
+ */
+function akdn_custom_views_pre_render(&$view) {
+  $node = menu_get_object();
+  if (isset($node)) {
+    $nid = $node->nid;
+    switch ($node->type) {
+      case 'agency':
+      case 'geography':
+      case 'focus_area':
+        if ($view->name == 'featured_slideshow_manual') {
+          $i = 0;
+          foreach ($view->result as $result) {
+            if (akdn_exclude_page(intval($result->nid), intval($nid))) {
+              // Unset the result.
+              unset($view->result[$i]);
+            }
+          $i++;
+         }
+       }
+      elseif($view->name == 'featured_slideshow') {
+        $i = 0;
+        foreach ($view->result as $result) {
+          if (akdn_exclude_page(intval($result->nid), intval($nid))) {
+            // Unset the result.
+            unset($view->result[$i]);
+          }
+          $i++;
+        }
+      }
+    break;
+    }
+  }
+}
+
+/**
+ * Function to return whether to exclude the page or not.
+ */
+function akdn_exclude_page($entity_id, $page_to_exclude_nid) {
+  $exclude = (bool)db_select('field_data_field_pages_to_exclude', 'f')
+    ->fields('f',  array('entity_id'))
+    ->condition('entity_id', $entity_id)
+    ->condition('field_pages_to_exclude_nid', $page_to_exclude_nid)
+    ->execute()
+    ->fetchField();
+  if ($exclude) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/**
+ * Implements hook_jcarousel_skin_info().
+ */
+function akdn_custom_jcarousel_skin_info() {
+  $skins = array();
+
+  $skins['akdn'] = array(
+      'title' => t('AKDN'),
+      'file' => 'skins/akdn/jcarousel-akdn.css',
+  );
+
+  return $skins;
+}
+
+/**
+ * Implements hook_media_token_to_markup_alter().
+ */
+function akdn_custom_media_token_to_markup_alter(&$element, $tag, $settings) {
+  global $language;
+  $lang = $language->language;
+  $cap_field = $tag['file']->field_image_caption;
+  $cap = (isset($cap_field[$lang])) ? $cap_field[$lang][0]['value'] : $cap_field['und'][0]['value'];
+  $element['#alt'] = $cap;
+  // Change the file name of the files.
+  $type = $element['content']['file']['#file']->type;
+  switch ($type) {
+    case 'document':
+    case 'audio':
+    case 'video':
+      if (!empty($element['content']['file']['#file']->field_display_name[LANGUAGE_NONE]['0']['value'])) {
+        $element['content']['file']['#file']->filename = $element['content']['file']['#file']->field_display_name[LANGUAGE_NONE]['0']['value'];
+      }
+      break;
+  }
+}
+
+/**
+ * Implements hook_form_alter().
+ *
+ * Adjustments for node_edit forms. We override the following:
+ * - Remove the delete button
+ * - Set the default language in the language switcher to english
+ */
+function akdn_custom_form_alter(&$form, &$form_state, $form_id) {
+
+  // Check that we're on a node edit form.
+  if (isset($form['type']) && isset($form['type']['#value']) && $form['type']['#value'] . '_node_form' == $form_id) {
+    // Remove the delete button.
+
+    // Check if this is a new node and if it has the entity translation form
+    if (empty($form['nid']['#value']) && isset($form['language']['#options'])) {
+      $form['language']['#default_value'] = 'en';
+    }
+
+    hide($form['field_date_decade']); //hide date decade field from node edit form
+  }
+
+  $form_to_type_map = array(
+      "views-exposed-form-press-releases-page" => "article",
+      "views-exposed-form-articles-page" => "article",
+      "views-exposed-form-speeches-page" => "speech",
+      //"views-exposed-form-projects-page-1" => "project",
+      "views-exposed-form-podcasts-page" => "podcast",
+      "views-exposed-form-publications-page" => "publication",
+      "views-exposed-form-galleries-page" => "gallery",
+      "views-exposed-form-articles-page-1" => "in-the-media",
+      "views-exposed-form-speech-themes-block-1" => "speech",
+  );
+  $forms_to_alter = array();
+  foreach ($form_to_type_map as $view_id => $content_type) {
+    $forms_to_alter[] = $view_id;
+  }
+
+  if (in_array($form['#id'], $forms_to_alter)) { //check to see if we are at the right forms
+    if (isset($form['tid']['#options'])) {
+      foreach ($form['tid']['#options'] as $dropdown_option) {
+        reset($dropdown_option->option);
+        $dropdown_key = key($dropdown_option->option);
+        $dropdown_array = array_values($dropdown_option->option);
+        $dropdown_value = $dropdown_array['0'];
+        if (strpos($dropdown_value, '-') === 0) {
+          $dropdown_value = '- ' . substr($dropdown_value, 1);
+        }
+        $dropdown_option->option[$dropdown_key] = $dropdown_value;
+      }
+    }
+  }
+  if($form['#id'] == 'event-node-form') {
+    $to_unset = array(6381, 6266, 6506);
+    foreach($to_unset as $opt_id) {
+      unset($form['field_agency'][$form['#node']->language]['#options'][$opt_id]);
+    }
+  }
+  //hardcoding in a sort for the Aga Khan family members first
+  if ($form['#id'] == 'views-exposed-form-speeches-page') {
+    $old_options = $form['field_speech_speaker_nid']['#options'];
+    //$form['field_speech_speaker_nid']['#options'] = array_unshift($old_options, 'Princess Zahra Aga Khan');
+    $family_members = array('His Highness the Aga Khan', 'Prince Amyn Aga Khan', 'Princess Zahra Aga Khan', 'Prince Rahim Aga Khan', 'Prince Hussain Aga Khan');
+    $new_options = array();
+    foreach ($form['field_speech_speaker_nid']['#options'] as $speaker_key => $speaker_val) {
+      if (!in_array($speaker_val, $family_members)) {
+        $new_options[$speaker_key] = $speaker_val;
+      }
+    } $form['field_speech_speaker_nid']['#options'] = array('6928' => 'His Highness the Aga Khan', '7146' => 'Prince Amyn Aga Khan', '8996' => 'Princess Zahra Aga Khan', '9241' => 'Prince Rahim Aga Khan', '9221' => 'Prince Hussain Aga Khan') + $new_options;
+  }
+
+  if ($form['#id'] == 'views-exposed-form-akaa-projects-page') {
+    $form['#action'] = '/architecture/projects';
+  }
+  if ($form['#id'] == 'views-exposed-form-akaa-projects-page') {
+    $form['view-all'] = array('#markup' => '<a id="view-all-projects" href="/architecture/projects">View All Projects</a>');
+  }
+}
+
+/**
+ * Implementes hook_form_FORM_ID_alter().
+ *
+ * Changes the names of the image styles to be more descriptive.
+ */
+function akdn_custom_form_imagecrop_style_selection_form_alter(&$form, &$form_state, &$form_id) {
+  $names_array = array(
+      'featured_content' => 'Banner Slideshow (770x385)',
+      'featured_content_narrow' => 'Banner Slideshow, tablet (540x270)',
+      'featured_content_mobile' => 'Banner Slideshow, mobile (380x180)',
+      'mini_feature' => 'Right Sidebar Related Content, desktop (167x104)',
+      'mini_feature_narrow' => 'Right Sidebar Related Content, tablet/mobile
+      (120x75)',
+      'node_page_header' => 'Content Page Header Image (250x250)',
+      'project_slider' => 'Project Carousel (238x120)',
+      'thumbnail_cropped' => 'Gallery Image (80x80)',
+      'thumbnail' => 'Press Centre Speeches/Projects/News Listings (100x100)',
+      'agency_listing_logos' => 'Agency Listing Page Logo (75x75)',
+      'agency_listing_sidebar_publication_images' => 'Agency Listing Page Sidebar
+      Publication Images (62x85)',
+      'focus_area_listing' => 'Focus Area Listing Page Image (163x92)',
+      'small_thumbnail' => 'Small Thumbnail (100x66)',
+      'article_listing_thumbnail' => 'Large Thumbnail (168x112)',
+      'inline_full_width' => 'Full width (660px)',
+      'inline_half_width' => 'Half width (330px)',
+      'inline_one_third_width' => 'Third Width (220px)'
+  );
+
+  foreach ($form['styles']['#options'] as $option) {
+    //$option_space = str_replace("_", " ", $option);
+    $new_option = $names_array[$option];
+    if ($new_option) {
+      $form['styles']['#options'][$option] = $new_option;
+    }
+  }
+}
+
+/**
+ * Implements hook_block_info().
+ */
+function akdn_custom_block_info() {
+  $blocks = array(
+      'ac_node_translations' => array(
+          'info' => t('Available Node Translations'),
+          'cache' => DRUPAL_NO_CACHE,
+      ),
+      'ac_lang_switch' => array(
+        'info' => t('Custom Language Switcher'),
+        'cache' => DRUPAL_NO_CACHE,
+
+      ),
+      'akaa_resources' => array(
+        'info' => t('AKAA Resources Links'),
+        'cache' => DRUPAL_NO_CACHE,
+      ),
+      'akdn_filter' => array(
+        'info' => t('Filter heading'),
+        'cache' => DRUPAL_NO_CACHE,
+      ),
+      'akdn_date_filter' => array(
+        'info' => t('Date Filter'),
+        'cache' => DRUPAL_NO_CACHE,
+      ),
+      'akdn_search' => array(
+        'info' => t('AKDN Search'),
+        'cache' => DRUPAL_NO_CACHE,
+      ),
+      'akdn_speech_quotes_heading' => array(
+        'info' => t('AKDN Speech Quote Heading'),
+        'cache' => DRUPAL_NO_CACHE,
+      ),
+      'akdn_speech_tools' => array(
+        'info' => t('AKDN Speech Tools'),
+        'cache' => DRUPAL_NO_CACHE,
+      ),
+      'akdn_related_content' => array(
+        'info' => t('AKDN Related Content'),
+        'cache' => DRUPAL_NO_CACHE,
+      ),
+      'akaa_project_details' => array(
+        'info' => t('AKAA Project Details'),
+        'cache' => DRUPAL_NO_CACHE,
+      ),
+  );
+  return $blocks;
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function akdn_custom_block_view($delta = '') {
+  $block = array();
+
+  switch ($delta) {
+    case 'ac_node_translations':
+      if ($links = _akdn_custom_lang_links()) {
+        $block['content'] = $links;
+        $block['subject'] = t('This page is also available in');
+      }
+      break;
+
+    case 'ac_lang_switch':
+      if ($links = _akdn_custom_lang_links(TRUE)) {
+        $block['content'] = $links;
+        $block['subject'] = t('Languages');
+      }
+      break;
+    case 'akaa_resources':
+      $list = akaa_get_resources_links();
+      $theme_args = array('items' => $list, 'type' => 'ol');
+      $content = theme('item_list', $theme_args);
+      $block['subject'] = t('AKAA Resources Links');
+      $block['content'] = $content;
+      break;
+    case 'akdn_date_filter':
+      $block['subject'] = t('Date Filter');
+      $block['content'] = drupal_get_form('akdn_block_forms', $delta);
+      break;
+    case 'akdn_filter':
+      $block['subject'] = t('Filters heading');
+      $block['content'] = '<h2>' . t('Filters') . '</h2>';
+      break;
+    case 'akdn_search':
+      $block['subject'] = t('Date Filter');
+      $block['content'] = drupal_get_form('akdn_search_forms', $delta);
+      break;
+    case 'akdn_speech_quotes_heading':
+      $block['subject'] = t('Speech Quote heading');
+      $block['content'] = akdn_speech_quotes_heading();
+      break;
+    case 'akdn_speech_tools':
+      $block['subject'] = t('AKDN Speech Tools');
+      $block['content'] = akdn_speech_tools();
+      break;
+    case 'akdn_related_content':
+      $block['subject'] = t('AKDN Related Content');
+      $block['content'] = akdn_related_content();
+      break;
+    case 'akaa_project_details':
+      $block['subject'] = t('AKAA Project Details');
+      $block['content'] = akaa_get_project_details();
+      break;
+    }
+  return $block;
+}
+
+/**
+ * Get AKAA project details.
+ */
+function akaa_get_project_details() {
+  $node = menu_get_object();
+  $output = "";
+  if (!empty($node->field_cycle_year)) {
+    $tid = $node->field_cycle_year['und']['0']['tid'];
+    $nid = db_query('SELECT entity_id FROM {field_data_field_cycle_year}
+      WHERE bundle = :bundle AND field_cycle_year_tid = :tid',
+        array(
+          ':bundle' => 'award_cycle',
+          ':tid' => $tid,
+        )
+      )->fetchField();
+    $term_name = db_query('SELECT name FROM {taxonomy_term_data} WHERE tid = :tid', array(':tid' => $tid))->fetchField();
+   $output = '<p class="award-cycle">' . t('Award Cycle:') . '</p>' .
+     '<span>' . l($term_name, 'node/' . $nid) . '</span>';
+  }
+  return $output;
+}
+
+/**
+ * Function to create related content.
+ */
+function akdn_related_content() {
+  $node = menu_get_object();
+  // Press releases.
+  $output = "";
+  if (isset($node->field_press_reference[LANGUAGE_NONE])) {
+    $press_release = array();
+    foreach ($node->field_press_reference[LANGUAGE_NONE] as $value) {
+      $title = akdn_return_get_short_title(intval($value['nid']));
+      $press_release[] = l($title, 'node/' . $value['nid']);
+    }
+    $theme_args = array('items' => $press_release, 'title' => t('Press Releases'), 'type' => 'ol');
+    $content = theme('item_list', $theme_args);
+    $output .= $content;
+  }
+  // News.
+  if (isset($node->field_related_news[LANGUAGE_NONE])) {
+    $news = array();
+    foreach ($node->field_related_news[LANGUAGE_NONE] as $value) {
+      $title = akdn_return_get_short_title($value['nid']);
+      $news[] = l($title, 'node/' . $value['nid']);
+    }
+    $theme_args = array('items' => $news, 'title' => t('News'), 'type' => 'ol');
+    $content = theme('item_list', $theme_args);
+    $output .= $content;
+  }
+
+  // Speeches.
+  if (isset($node->field_speeches_reference[LANGUAGE_NONE])) {
+    $speeches = array();
+    foreach ($node->field_speeches_reference[LANGUAGE_NONE] as $value) {
+      $title = akdn_return_get_short_title($value['nid']);
+      $speeches[] = l($title, 'node/' . $value['nid']);
+    }
+    $theme_args = array('items' => $speeches, 'title' => t('Speeches'), 'type' => 'ol');
+    $content = theme('item_list', $theme_args);
+    $output .= $content;
+  }
+
+  // Photos.
+  if (isset($node->field_photos_reference[LANGUAGE_NONE])) {
+    $photos = array();
+    foreach ($node->field_photos_reference[LANGUAGE_NONE] as $value) {
+      $title = akdn_return_get_short_title($value['nid']);
+      $photos[] = l($title, 'node/' . $value['nid']);
+    }
+    $theme_args = array('items' => $photos, 'title' => t('Photos'), 'type' => 'ol');
+    $content = theme('item_list', $theme_args);
+    $output .= $content;
+  }
+
+  // Videos.
+  if (isset($node->field_podcasts_reference[LANGUAGE_NONE])) {
+    $vids = array();
+    foreach ($node->field_podcasts_reference[LANGUAGE_NONE] as $value) {
+      $title = akdn_return_get_short_title($value['nid']);
+      $vids[] = l($title, 'node/' . $value['nid']);
+    }
+    $theme_args = array('items' => $vids, 'title' => t('Videos'), 'type' => 'ol');
+    $content = theme('item_list', $theme_args);
+    $output .= $content;
+  }
+
+  // Events.
+  if (isset($node->field_events_reference[LANGUAGE_NONE])) {
+    $events = array();
+    foreach ($node->field_events_reference[LANGUAGE_NONE] as $value) {
+      $title = akdn_return_get_short_title($value['nid']);
+      $events[] = l($title, 'node/' . $value['nid']);
+    }
+    $theme_args = array('items' => $events, 'title' => t('Events'), 'type' => 'ol');
+    $content = theme('item_list', $theme_args);
+    $output .= $content;
+  }
+
+  // Links.
+  if ($node->type == 'publication') {
+    $field = 'field_project_links';
+  }
+  else {
+   $field = 'field_' . $node->type . '_links';
+  }
+  $links_refs = $node->$field;
+  if (!empty($links_refs[LANGUAGE_NONE])) {
+    $links = array();
+    foreach ($links_refs[LANGUAGE_NONE] as $value) {
+      $links[] = l($value['title'], $value['url']);
+    }
+    $theme_args = array('items' => $links, 'title' => t('Links'), 'type' => 'ol');
+    $content = theme('item_list', $theme_args);
+    $output .= $content;
+  }
+
+  // Publications.
+  if (isset($node->field_related_publications[LANGUAGE_NONE])) {
+    $pubs = array();
+    foreach ($node->field_related_publications[LANGUAGE_NONE] as $value) {
+      $title = akdn_return_get_short_title($value['nid']);
+      $pubs[] = l($title, 'node/' . $value['nid']);
+    }
+    $theme_args = array('items' => $pubs, 'title' => t('Publications'), 'type' => 'ol');
+    $content = theme('item_list', $theme_args);
+    $output .= $content;
+  }
+
+  // In the media.
+  if (isset($node->field_related_in_the_media[LANGUAGE_NONE])) {
+    $media = array();
+    foreach ($node->field_related_in_the_media[LANGUAGE_NONE] as $value) {
+      $title = akdn_return_get_short_title($value['nid']);
+      $media[] = l($title, 'node/' . $value['nid']);
+    }
+    $theme_args = array('items' => $media, 'title' => t('In the Media'), 'type' => 'ol');
+    $content = theme('item_list', $theme_args);
+    $output .= $content;
+  }
+
+  // Projects.
+  if (isset($node->field_related_project[LANGUAGE_NONE])) {
+    $proj = array();
+    foreach ($node->field_related_in_the_media[LANGUAGE_NONE] as $value) {
+      $title = akdn_return_get_short_title($value['nid']);
+      $proj[] = l($title, 'node/' . $value['nid']);
+    }
+    $theme_args = array('items' => $proj, 'title' => t('Projects'), 'type' => 'ol');
+    $content = theme('item_list', $theme_args);
+    $output .= $content;
+  }
+  return $output;
+}
+
+
+/**
+ * Function to return the short title.
+ * @param
+ * $nid: node id.
+ */
+function akdn_return_get_short_title($nid) {
+  $title = db_query('SELECT field_short_title_value FROM {field_data_field_short_title} WHERE entity_id = :nid',
+    array(':nid' => $nid))->fetchField();
+  return $title;
+}
+
+/**
+ * Function to create the akdn speech tools block.
+ */
+function akdn_speech_tools() {
+  $result = db_query('SELECT tid, name FROM {taxonomy_term_data} WHERE vid = :vid',
+    array(':vid' => '16'));
+
+  foreach ($result as $row) {
+    $class = "inactive-theme";
+    if (isset($_GET['f'])) {
+      if (array_search('field_speech_themes:' . $row->tid, $_GET['f']) !== FALSE) {
+        $class = "active-theme";
+      }
+    }
+    $list[] = l(t($row->name), 'speech-quotes',
+      array(
+        'query' => array(
+          'f'  => array(
+            '0' => 'field_speech_themes:' . $row->tid,
+          ),
+        ),
+       'attributes' => array('class' => array($class)),
+      ));
+  }
+  $theme_args = array('items' => $list, 'title' => t('Quote Finder'), 'type' => 'ol');
+  $content = theme('item_list', $theme_args);
+  return $content;
+}
+
+/**
+ * Function AKDN speech quotes heading.
+ */
+function akdn_speech_quotes_heading() {
+  if (isset($_GET['f'])) {
+    foreach ($_GET['f'] as $value) {
+      if (strstr($value, 'field_speech_themes')) {
+        $theme = explode(":", $value);
+        $theme = $theme[1];
+        $theme = db_query('SELECT name FROM {taxonomy_term_data} WHERE tid = :tid',
+          array(':tid' => $theme))->fetchField();
+        return t('Quotations by His Highness the Aga Khan on @theme', array('@theme' => $theme));
+      }
+    }
+  }
+  return "";
+}
+
+/**
+ * Function to create forms using blocks.
+ */
+function akdn_block_forms($form, &$form_state, $delta) {
+  $form = array();
+  switch ($delta) {
+    case 'akdn_date_filter':
+      $format = 'Y-m-d';
+      if (isset($_SESSION['from']) && isset($_GET['f'])) {
+        $from = $_SESSION['from'];
+      }
+      else {
+        $from = date('Y-m-d', time());
+      }
+      if (isset($_SESSION['to']) && isset($_GET['f'])) {
+        $to = $_SESSION['to'];
+      }
+      else {
+        $to = date('Y-m-d', time());
+      }
+      $start = 1957 - date('Y', time());
+      $form['date_filter_from'] = array(
+        '#type' => 'date_popup', // types 'date_popup', 'date_text' and 'date_timezone' are also supported. See .inc file.
+        '#title' => t('From'),
+        '#date_format' => $format,
+        '#default_value' => $from,
+        '#date_year_range' => $start . ':+0',
+      );
+      $form['date_filter_to'] = array(
+        '#type' => 'date_popup', // types 'date_popup', 'date_text' and 'date_timezone' are also supported. See .inc file.
+        '#title' => t('To'),
+        '#date_format' => $format,
+        '#default_value' => $to,
+        '#date_year_range' => $start . ':+0',
+      );
+      $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => t('Go'),
+        '#submit' => array('akdn_date_filter_submit'),
+      );
+      break;
+  }
+  return $form;
+}
+
+function akdn_search_forms($form, &$form_state, $delta) {
+  switch ($delta) {
+    case 'akdn_search':
+      $default_value = "";
+      if (current_path() == 'search' && isset($_GET['text'])) {
+        $default_value = $_GET['text'];
+      }
+      $form['search'] = array(
+        '#type' => 'textfield',
+        '#attributes' => array(
+          'placeholder' => t('Search AKDN'),
+        ),
+        '#default_value' => $default_value,
+      );
+      $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => t('Go'),
+        '#submit' => array('akdn_search_submit'),
+        '#attributes' => array(
+          'style' => 'display:none',
+        ),
+      );
+      break;
+  }
+  return $form;
+}
+
+/**
+ * AKDN Search block submit handler.
+ */
+function akdn_search_submit($form, &$form_state) {
+  $form_state['redirect'] = array('search',
+    array(
+      'query' => array('text' => $form_state['values']['search']),
+    )
+  );
+}
+
+/**
+ * Submit handler for date filter.
+ */
+function akdn_date_filter_submit($form, &$form_state) {
+  $_SESSION['from'] = $form_state['values']['date_filter_from'];
+  $_SESSION['to'] = $form_state['values']['date_filter_to'];
+
+  // Apply the date filter.
+  $to = $form_state['values']['date_filter_to'] . 'T23:59:59Z';
+  $from = $form_state['values']['date_filter_from'] . 'T00:00:00Z';
+  $current_path = current_path();
+  // The other query parameters have to be remembered as well.
+  $date_filter = "";
+
+  if (arg(1) == 'events') {
+    $date_filter = 'field_event_date%3Avalue';
+  }
+  else if ($current_path == 'search' || $current_path == 'what-is-new') {
+    $date_filter = 'publish_time';
+  }
+  else {
+    $date_filter = 'field_publish_date';
+  }
+
+  if (isset($_GET['f']) || isset($_GET['text'])) {
+    $flag = 1;
+    foreach ($_GET['f'] as $key => $value) {
+      if (strstr($value, $date_filter)) {
+        $_GET['f'][$key] = $date_filter . ':[' . $from . ' TO ' . $to . ']';
+        $flag = 0;
+        break;
+      }
+    }
+    if ($flag) {
+      // Search for the publish date and change it.
+      $_GET['f'][] = $date_filter . ':[' . $from . ' TO ' . $to . ']';
+    }
+  }
+  // Apply the date filters.
+  else {
+    $form_state['redirect'] = array($current_path,
+      array(
+        'query' => array(
+          'f'  => array(
+            '0' => $date_filter . ':[' . $from . ' TO ' . $to . ']',
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/**
+ * Function to create links for AKKA Resources.
+ */
+function akaa_get_resources_links() {
+  $links = array();
+
+  $links[] = l(t('Press Releases'), 'architecture/press-releases');
+  $links[] = l(t('Speeches'), 'architecture/speeches');
+  $links[] = l(t('Videos'), 'architecture/videos');
+  $links[] = l(t('Galleries'), 'architecture/galleries');
+  $links[] = l(t('Publications'), 'architecture/publications');
+  $links[] = l(t('Events'), 'architecture/events');
+  $links[] = l(t('In the Media'), 'architecture/in-the-media');
+  $links[] = l(t('News'), 'architecture/news');
+  $links[] = l(t('Project Locations'), 'architecture/projects/map');
+
+  return $links;
+}
+
+function _akdn_custom_lang_links($main_switcher = FALSE) {
+  if (drupal_multilingual()) {
+    $path = drupal_is_front_page() ? '<front>' : $_GET['q'];
+    $links = language_negotiation_get_switch_links('language_content', $path);
+    $new_links = $links->links;
+
+    // Narrow links based on node page translations.
+    if (arg(0) == 'node' && is_numeric(arg(1))) {
+      $node = node_load(arg(1));
+      $new_links = array_intersect_key($new_links, $node->translations->data);
+    }
+
+    // Narrow down links if not on a node page.
+    else {
+      $default_links = variable_get('akdn_custom_switcher_lang', array());
+      $default_links = array_filter($default_links);
+      $new_links = array_intersect_key($new_links, $default_links);
+    }
+
+    if (!empty($new_links)) {
+      // If we're on a node we don't want to show the block when we have only one language
+      if (count($new_links) < 2) {
+        return FALSE;
+      }
+
+      drupal_add_css(drupal_get_path('module', 'locale') . '/locale.css');
+      $class = "language-switcher-{$links->provider}";
+      $variables = array(
+          'links' => $new_links,
+          'attributes' => array('class' => array($class)),
+      );
+      return theme('links__locale_block', $variables);
+    } else {
+      return FALSE;
+    }
+  } else {
+    return FALSE;
+  }
+}
+
+/**
+ * Override the file edit form.
+ *
+ * This helper function does two things:
+ * - Removes the 'cancel' button from the media edit overlay.
+ * - Displays a file preview image instead of just the link.
+ */
+function akdn_custom_form_file_entity_edit_alter(&$form, &$form_state) {
+  // Only switch the display for images
+  if ($form['type']['#value'] == 'image') {
+    $file = $form['preview']['#file'];
+    $form['preview'] = file_view_file($file, 'media_preview');
+  }
+
+  // Remove the canel button
+  unset($form['actions']['cancel']);
+}
+
+/**
+ * Implements hook_filter_info().
+ */
+function akdn_custom_filter_info() {
+  $filters['akdn_name'] = array(
+      'title' => t('AKDN Name Filter'),
+      'description' => t('This filter ensures that the name "Aga Khan" will not be split across multiple lines.'),
+      'process callback' => '_akdn_custom_filter_process',
+  );
+  return $filters;
+}
+
+/**
+ * Filter the the name "Aga Khan" and insert a &nbsp;
+ */
+function _akdn_custom_filter_process($text, $filter) {
+  return str_replace('Aga Khan', 'Aga&nbsp;Khan', $text);
+}
+
+/**
+ * Implements hook_apachesolr_query_alter().
+ */
+function akdn_custom_apachesolr_query_alter($query) {
+  $query->addFilter('hash', apachesolr_site_hash());
+}
+
+/**
+ * Implements hook_node_presave().
+ */
+function akdn_custom_node_presave($node) {
+  //we are converting the publish date field value into the date decade value and saving it
+  $content_types = array("article", "gallery", "podcast", "project", "publication", "speech"); //only on these content types
+
+  if (in_array($node->type, $content_types)) {  //check to see if we are saving a node belonging in one of the content types defined above
+    if (isset($node->field_publish_date['und']['0']['value'])) {  //if publish date is set
+      $decade_timestamp = -631155600; //this is the decade counter, stating with the timestamp of 1950
+      $now = time(); //timestamp of the current time
+      $article_time = $node->field_publish_date['und']['0']['value']; //timestamp of the publish date
+      $decade = -631155600; //the final decade of this node will be stored in this variable
+
+      while ($decade_timestamp < $now) { //a while loop to go through all the decades up to now
+        $decade_timestamp = strtotime("+10 years", $decade_timestamp); //add 1 decade to the counter
+        if ($decade_timestamp < $node->field_publish_date['und']['0']['value']) {  //if this value is less than the publish date
+          $decade = $decade_timestamp;  //we set the final decade value to this timestamp
+        }
+      }
+
+      //assign values to the node to be saved
+      $node->field_date_decade['und']['0']['value'] = date("Y\s", $decade);
+      $node->field_date_decade['und']['0']['format'] = NULL;
+      $node->field_date_decade['und']['0']['safe_value'] = urlencode(date("Y\s", $decade));
+    } else {
+      //if publish sate is not set (or deleted) set empty value
+      $node->field_date_decade = array();
+    }
+  }
+}
+
+/**
+ * Limit the available inline image styles.
+ */
+function akdn_custom_media_wysiwyg_allowed_view_modes_alter(&$view_modes, &$file) {
+  //dpm($view_modes);
+  // TODO: make this configurable? or at least a wildcard to match inline_* ?
+  $view_modes = array(
+      'media_original' => array(
+          'label' => 'Full Width',
+          'custom settings' => TRUE,
+      ),
+      'media_large' => array(
+          'label' => 'Half Width',
+          'custom settings' => FALSE,
+      ),
+  );
+}
+
+/**
+ * Form for getting the configuration.
+ */
+function akdn_custom_config($form_state) {
+  $form['akdn_views_cache_time'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Akdn views Cache time'),
+      '#description' => t('The views pages/blocks cache time in minutes'),
+      '#default_value' => variable_get('akdn_views_cache_time', '30'),
+      '#required' => TRUE,
+      '#element_validate' => array('element_validate_integer'),
+  );
+  return system_settings_form($form);
+}
+
+/**
+ * Get the quote finder lists
+ * @param type $title
+ * @param type $interval
+ * @return type
+ */
+function akdn_custom_speech_quote_finder_listing($title, $interval = 0) {
+  $speech_theme_data = akdn_custom_quote_finder_get_data($interval);
+  $data = akdn_custom_process_speech_quote_list($speech_theme_data, $title);
+  return $data;
+}
+
+/**
+ * Process/Show the speech quote finder aggregated listing
+ * @param type $data
+ * @param type $title
+ * @return string
+ */
+function akdn_custom_process_speech_quote_list($data, $title = 'Quote Finder') {
+  global $language;
+  $output = '';
+  $output = '<div class="speech-quotes-finder-list slide-text" id="speech-quotes-finder-list">';
+  $output .= '<h3>' . t($title) . '</h3>';
+  $output .= "<ul>";
+  foreach ($data['node'] as $nid => $node) {
+    $params = array();
+    if ($node->total == 0) {
+      continue;
+    }
+    $active = ($nid == $current_nid) ? 'active' : 'inactive';
+    $params['f[0]'] = "field_speech_themes:" . $node->tid;
+    $output .= "<li>";
+    $output .= l(t($node->node_title), 'speech-quotes', array('language' => $language->language, 'query' => $params, 'html' => TRUE, 'attributes' => array('class' => $active)));
+    $output .= "</li>";
+  }
+  $output .= "</ul>";
+  $output .= "</div>";
+  return $output;
+}
+
+/**
+ * Process/Show the speech quote finder aggregated listing
+ * @param type $data
+ * @param type $title
+ * @return string
+ */
+function akdn_custom_process_speech_quote_list_old($data, $title = 'Quote Finder') {
+  global $language;
+  $output = '';
+  $output = '<div class="speech-quotes-finder-list slide-text" id="speech-quotes-finder-list">';
+  $output .= '<h3>' . t($title) . '</h3>';
+  $output .= "<ul>";
+  foreach ($data['node'] as $nid => $node) {
+    $params = array();
+    if ($node->total == 0) {
+      continue;
+    }
+    $active = ($nid == $current_nid) ? 'active' : 'inactive';
+    $params['f[0]'] = "field_speech_themes:" . $node->tid;
+    $output .= "<li>";
+    $output .= l(t($node->node_title) . ' ' . '(' . $node->total . ')', 'speech-quotes', array('language' => $language->language, 'query' => $params, 'html' => TRUE, 'attributes' => array('class' => $active)));
+    $output .= "</li>";
+  }
+  $output .= "</ul>";
+  $output .= "</div>";
+  return $output;
+}
+
+/**
+ * Get the sppech theme data
+ * @param type $title
+ * @param type $interval
+ * @return type
+ */
+function akdn_custom_quote_finder_get_data($title, $interval = 0) {
+  $key = "speech-theme-quote-data";
+  $content = cache_get($key, AKDN_CACHE_TABLE);
+  $reload_tree = (isset($content->created)) ? custom_solr_get_tree_status($content->created, $interval) : TRUE;
+  if ($reload_tree == FALSE) { // If timeout has not happened check for data presence
+    $data = $content->data;
+    if ((empty($content->data))) {
+      $reload_tree = TRUE;
+    }
+  }
+  if ($reload_tree == FALSE) {
+    return $content->data;
+  }
+  $query = "SELECT DISTINCT node.title AS node_title, node.nid AS nid, node.language AS node_language,
+    st.field_associated_theme_tid as tid
+      FROM {nodequeue_nodes} nq
+      LEFT JOIN {node} node ON (nq.nid = node.nid)
+      LEFT JOIN {field_data_field_associated_theme} st ON (node.nid = st.entity_id )
+        AND nq.qid = '11'
+        WHERE (( (node.status = '1') AND (node.type IN  ('speech_theme')) ))
+        ORDER BY node_title asc";
+  $results = db_query($query);
+  $data = array();
+  $tids = '';
+  foreach ($results as $node) {
+    $node->total = 0;
+    $nid = $node->nid;
+    $tid = $node->tid;
+    if ($tid) {
+      $tids = ($tids) ? $tids . "," . $tid : $tid;
+    }
+    $data['node'][$nid] = $node;
+    $data['tid'][$tid] = $nid;
+  }
+  akdn_custom_get_taxonomy_speech_quotes_count($data, $tids);
+  cache_set($key, $data, AKDN_CACHE_TABLE);
+  return $data;
+}
+
+/**
+ * Fetch number of quotes against each speech theme
+ * @param type $data
+ * @param type $tids
+ */
+function akdn_custom_get_taxonomy_speech_quotes_count(&$data, $tids) {
+  $query = "SELECT t.field_speech_themes_tid as tid, count(nid) as total FROM `field_data_field_speech_themes` t, node n
+where t.entity_id=n.nid and n.status=1 and t.field_speech_themes_tid in ( $tids ) and t.bundle = 'speech_quote'
+group by tid";
+  $results = db_query($query);
+  foreach ($results as $node) {
+    $nid = (isset($data['tid'][$node->tid])) ? $data['tid'][$node->tid] : '';
+    $data['node'][$nid]->total = $node->total;
+  }
+}
+
+/**
+ * Get the speaker lists
+ * @param type $title
+ * @param type $interval
+ * @return type
+ */
+function akdn_custom_speech_speakers_listing($title = 'Speakers', $interval = 0, $limit = 10) {
+  $speech_theme_data = akdn_custom_speech_speakers_get_data($interval);
+  $data = akdn_custom_process_speech_speakers_list($speech_theme_data, $title);
+  return $data;
+}
+
+/**
+ * Process/Show the speech Speakers listing
+ * @param type $data
+ * @param type $title
+ * @return string
+ */
+function akdn_custom_process_speech_speakers_list($data, $title = 'Speakers', $limit = 10) {
+  $output = '';
+  $output = '<div class="speech-speakers-list slide-text" id="speech-speakers-list">';
+  $output .= '<h3>' . t($title) . '</h3>';
+  $output .= '<ul>';
+  $ctr = 0;
+  if (isset($_REQUEST['field_speech_speaker_nid'])) {
+    $passed_nid = (isset($_REQUEST['field_speech_speaker_nid'])) ? $_REQUEST['field_speech_speaker_nid'] : '';
+    if (is_array($passed_nid)) {
+      $current_nid = $passed_nid[0];
+    } else {
+      $current_nid = $passed_nid;
+    }
+  }
+  foreach ($data['node'] as $nid => $node) {
+    $params = array();
+    if (empty($node->title)) {
+      continue;
+    }
+    if ($ctr == $limit) {
+      $output .= '<div class="speech-speakers-list-more" id="speech-speakers-list-more">';
+      $output .= '<h3>' . t('Show More...') . '</h3>';
+    }
+    $output .= '<li>';
+    if ($nid == '6926') {
+      $params['field_speech_speaker_nid'] = $nid;
+    } else {
+      $params['field_speech_speaker_nid[]'] = $nid;
+    }
+    global $language;
+    $active = ($nid == $current_nid) ? 'active' : 'inactive';
+    $output .= l(t($node->title) . ' ' . '(' . $node->total . ')', 'press-centre/speeches', array('language' => $language->language, 'query' => $params, 'html' => TRUE, 'attributes' => array('class' => $active)));
+    $output .= '</li>';
+    $ctr++;
+  }
+  if ($ctr >= $limit) {
+    $output .= '</div>';
+  }
+  $output .= '</ul>';
+  if ($ctr >= $limit) {
+    $output .= '<div class="speech-speakers-list-more-hide" id="speech-speakers-list-more-hide"><h3>' . t('Hide') . '</h3></div>';
+  }
+  $output .= '</div>';
+  return $output;
+}
+
+/**
+ * Get the sppech theme data
+ * @param type $title
+ * @param type $interval
+ * @return type
+ */
+function akdn_custom_speech_speakers_get_data($title, $interval = 0) {
+  $key = "speech-speakers-data";
+  $content = cache_get($key, AKDN_CACHE_TABLE);
+  $reload_tree = (isset($content->created)) ? custom_solr_get_tree_status($content->created, $interval) : TRUE;
+  if ($reload_tree == FALSE) { // If timeout has not happened check for data presence
+    $data = $content->data;
+    if ((empty($content->data))) {
+      $reload_tree = TRUE;
+    }
+  }
+  if ($reload_tree == FALSE) {
+    return $content->data;
+  }
+  $query = "select nid, count(*) as total,title
+    from {field_data_field_speech_speaker speaker}
+      left join {node} n on (speaker.field_speech_speaker_nid = n.nid and n.status=1)
+      group by field_speech_speaker_nid
+      order by total desc";
+  $results = db_query($query);
+  $data = array();
+  foreach ($results as $node) {
+    $nid = $node->nid;
+    $data['node'][$nid] = $node;
+  }
+  cache_set($key, $data, AKDN_CACHE_TABLE);
+  return $data;
+}
+
+/**
+ * Get thematic focus area for project display
+ * @param type $interval
+ * @return type
+ */
+function akdn_custon_project_thematic_focus_areas($interval = .5) {
+  $tids = '0';
+  if ((arg(0) == 'node')) {
+    $nid = intval(arg(1));
+  }
+  if ($nid == 0) {
+    return $tids;
+  }
+  $data = akdn_custom_get_thematic_focus_area($nid, $interval);
+  $tids = (isset($data['node']->tid)) ? $data['node']->tid : $tids;
+  if (empty($tids)) {
+    //$data = akdn_custom_get_all_projects_thematic_areas();
+    //$tids = (isset($data['node']->tid)) ? $data['node']->tid : '0';
+  }
+  $tids = (empty($tids)) ? '0' : $tids;
+  return $tids;
+}
+
+/**
+ * Get all projects thematic areas
+ * @param type $interval
+ * @return type
+ */
+function akdn_custom_get_all_projects_thematic_areas($interval = .5) {
+  $key = "projets-all-thematic-area-tid";
+  $content = cache_get($key, AKDN_CACHE_TABLE);
+  $reload_tree = (isset($content->created)) ? custom_solr_get_tree_status($content->created, $interval) : TRUE;
+  if ($reload_tree == FALSE) { // If timeout has not happened check for data presence
+    $data = $content->data;
+    if ((empty($content->data))) {
+      $reload_tree = TRUE;
+    }
+  }
+  if ($reload_tree == FALSE) {
+    return $content->data;
+  }
+  $query = "select group_concat(DISTINCT field_focus_area_tid SEPARATOR '+') as tid from {field_revision_field_focus_area}
+    where bundle='project'";
+  $results = db_query($query, array(':pentity_id' => $entity_id));
+  $data = array();
+  foreach ($results as $node) {
+    $data['node'] = $node;
+  }
+  cache_set($key, $data, AKDN_CACHE_TABLE);
+  return $data;
+}
+
+/**
+ * Get the events, article, news thematic focus area
+ * @param type $title
+ * @param type $interval
+ * @return type
+ */
+function akdn_custom_get_thematic_focus_area($entity_id, $interval = .5) {
+  $key = "thematic-area-tid-" . $entity_id;
+  $content = cache_get($key, AKDN_CACHE_TABLE);
+  $reload_tree = (isset($content->created)) ? custom_solr_get_tree_status($content->created, $interval) : TRUE;
+  if ($reload_tree == FALSE) { // If timeout has not happened check for data presence
+    $data = $content->data;
+    if ((empty($content->data))) {
+      $reload_tree = TRUE;
+    }
+  }
+  if ($reload_tree == FALSE) {
+    return $content->data;
+  }
+  $query = "SELECT field_focus_area_tid as tid from {field_data_field_focus_area}
+    where entity_id= :pentity_id limit 1";
+  $results = db_query($query, array(':pentity_id' => $entity_id));
+  $data = array();
+  foreach ($results as $node) {
+    $data['node'] = $node;
+  }
+  cache_set($key, $data, AKDN_CACHE_TABLE);
+  return $data;
+}

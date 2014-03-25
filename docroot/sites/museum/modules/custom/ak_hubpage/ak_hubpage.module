@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the ak_hubpage feature.
+ */
+
+include_once 'ak_hubpage.features.inc';

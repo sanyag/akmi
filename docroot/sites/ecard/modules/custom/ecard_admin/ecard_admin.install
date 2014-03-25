@@ -1,0 +1,36 @@
+<?php
+/**
+ * Implements hook_install().
+ */
+function ecard_admin_install() {
+  variable_set('mail_system',
+    array_merge(
+      variable_get('mail_system', array('default-system' => 'DefaultMailSystem')),
+      array('ecard_admin' => 'EcardAdminMailSystem')
+    )
+  );
+}
+
+function ecard_admin_uninstall() {
+  // Unset module keys in variable mail_system
+  $mail_system = variable_get('mail_system', array('default-system' => 'DefaultMailSystem'));
+  unset($mail_system['ecard_admin']);
+  variable_set('mail_system', $mail_system);
+}
+
+/**
+ * Sets variable to allow for alternate mail system declared in the .module file
+ */
+function ecard_admin_update_7000() {
+  $mail_system = variable_get('mail_system', array('default-system' => 'DefaultMailSystem'));
+  if (!isset($mail_system['ecard_admin'])) {
+    variable_set('mail_system',
+      array_merge(
+        variable_get('mail_system', array('default-system' => 'DefaultMailSystem')),
+        array('ecard_admin' => 'EcardAdminMailSystem')
+      )
+    );
+  }
+}
+
+?>

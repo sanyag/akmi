@@ -1,0 +1,6 @@
+body.page-imagecrop a {
+  text-decoration: underline;
+}
+body.page-imagecrop a#cancel-crop {
+  top: 25px;
+}

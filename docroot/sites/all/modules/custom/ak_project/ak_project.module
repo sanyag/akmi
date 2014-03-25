@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the AK Project feature.
+ */
+
+include_once('ak_project.features.inc');

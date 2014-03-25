@@ -1,0 +1,13 @@
+#block-menu-block-2,
+.language-switcher-locale-url,
+.pane-print-print-links,
+div.tabs,
+.block-footer-menus,
+.region-user-first-inner,
+.block-workbench,
+.region-footer-first-inner,
+.region-sidebar-second,
+.messages,
+.block-ac-node-translations{
+  display: none;
+}

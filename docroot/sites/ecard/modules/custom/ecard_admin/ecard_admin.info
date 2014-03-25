@@ -1,0 +1,5 @@
+name = eCard Admin
+description = Admin features for the eCard system
+core = 7.x
+files[] = "ecard_admin.admin.inc"
+scripts[] = "ecard_admin.js"

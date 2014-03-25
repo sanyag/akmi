@@ -1,0 +1,30 @@
+<?php
+
+/**
+ * @description
+ * Syndication Server Client Access module implements functionality to 
+ * restrict content to specific client sites
+ * 
+ * 
+ **/
+
+/**
+ * Implements hook_install().
+ */
+function syndication_server_client_access_install() {  
+  
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function syndication_server_client_access_uninstall() {
+  
+}
+
+/**
+ * Implements hook_schema().
+ */
+function syndication_server_client_access_schema() {
+  
+}

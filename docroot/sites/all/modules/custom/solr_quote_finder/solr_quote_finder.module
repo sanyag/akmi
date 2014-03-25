@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the solr_quote_finder feature.
+ */
+
+include_once 'solr_quote_finder.features.inc';

@@ -1,0 +1,137 @@
+diff --git a/brightcove_media/brightcove_media.info b/brightcove_media/brightcove_media.info
+index bdce02c..9845d4f 100644
+--- a/brightcove_media/brightcove_media.library.js
++++ b/brightcove_media/brightcove_media.library.js
+@@ -6,21 +6,6 @@
+   Drupal.behaviors.brightcoveLibrary = {
+     attach: function (context, settings) {
+ 
+-      // Safely override the original function, using Proxy Pattern (http://docs.jquery.com/Types#Proxy_Pattern)
+-      var proxied = Drupal.media.browser.validateButtons;
+-      Drupal.media.browser.validateButtons = function() {
+-        if (this.id === 'media-tab-brightcove') {
+-          if (!($('.fake-ok', this).length > 0)) {
+-            $('<a class="button fake-ok">Submit</a>').appendTo(this).bind('click', Drupal.media.browser.submit);
+-          }
+-          if (!($('.fake-cancel', this).length > 0)) {
+-            $('<a class="button fake-cancel">Cancel</a>').appendTo(this).bind('click', Drupal.media.browser.submit);
+-          }
+-        } else {
+-          return proxied.apply(this);
+-        }
+-      };
+-
+       // Check if object already exists
+       if (typeof Drupal.brightcoveLibrary.library.start != 'function') {
+         Drupal.brightcoveLibrary.library = new Drupal.media.browser.library(Drupal.settings.media.browser.brightcove);
+@@ -32,7 +17,7 @@
+           if (!Drupal.brightcoveLibrary.loaded) {
+             var params = {};
+             for (var p in Drupal.settings.media.browser.brightcove) {
+-              params[p] = Drupal.settings.media.browser.library[p];
++              params[p] = Drupal.media.browser.library[p];
+             }
+ 
+             Drupal.brightcoveLibrary.library.start($(ui.panel), params);
+diff --git a/brightcove_media/brightcove_media.module b/brightcove_media/brightcove_media.module
+index dd2a521..bfa0fd0 100644
+--- a/brightcove_media/brightcove_media.module
++++ b/brightcove_media/brightcove_media.module
+@@ -214,11 +214,23 @@ function brightcove_media_file_default_displays() {
+  * Implements hook_media_browser_plugin_info().
+  */
+ function brightcove_media_media_browser_plugin_info() {
+-  return array(
+-    'brightcove' => array(
+-      '#weight' => 0,
+-    ),
+-  );
++  $plugins = array();
++
++  $plugins['brightcove'] = array(
++    'title' => t('Brightcove videos'),
++    'weight' => 0,
++    'handler' => array(
++      'path' => drupal_get_path('module', 'brightcove_media'),
++      'file' => 'MediaBrightcoveBrowser.inc',
++      'class' => 'MediaBrightcoveBrowser',
++     ),
++    // @todo Replace with appropriate file access function when that gets
++    //   committed to File Entity project.
++    'access callback' => 'user_access',
++      'access arguments' => array('browse videos'),
++   );
++
++  return $plugins;
+ }
+ 
+ /**
+@@ -346,46 +358,6 @@ function brightcove_media_browser_filter_form($form, &$form_state) {
+   return $form;
+ }
+ 
+-/**
+- * Implements hook_media_browser_plugin_view().
+- */
+-function brightcove_media_media_browser_plugin_view($plugin_name, $params) {
+-  switch ($plugin_name) {
+-    case 'brightcove':
+-      $upload_form = drupal_get_form('brightcove_media_upload_form');
+-      $upload_form = drupal_render($upload_form);
+-      $filter_form = drupal_get_form('brightcove_media_browser_filter_form');
+-      $filter_form = drupal_render($filter_form);
+-      $media_path = drupal_get_path('module', 'media');
+-      $bcpath = drupal_get_path('module', 'brightcove_media');
+-      return array(
+-        '#title' => t('Brightcove videos'),
+-        '#settings' => array(
+-          'viewMode' => 'thumbnails',
+-          'getMediaUrl' => url('brightcove/media/list'),
+-          'multiselect' => isset($params['multiselect']) &&
+-                           $params['multiselect'] != 'false',
+-          'types' => isset($params['types']) ? $params['types'] : array(),
+-        ),
+-        '#attached' => array(
+-          'js' => array(
+-            $media_path . '/js/plugins/media.library.js',
+-            $bcpath . '/brightcove_media.library.js',
+-          ),
+-          'css' => array(
+-            //@todo: should move this.
+-            $media_path . '/js/plugins/media.library.css',
+-            $bcpath . '/brightcove_media.library.css',
+-          ),
+-        ),
+-        '#markup' => '<div id="container"><div id="scrollbox">' . $upload_form . $filter_form . '<ul id="media-browser-library-list" class="media-list-thumbnails"></ul><div id="status"></div></div></div>',
+-      );
+-      break;
+-  }
+-
+-  return NULL;
+-}
+-
+ function brightcove_media_list() {
+   global $user;
+ 
+@@ -461,15 +433,12 @@ function brightcove_media_list() {
+ /**
+  * Implements hook_ctools_plugin_api().
+  */
+-function brightcove_media_ctools_plugin_api($owner, $api) {
+-  static $api_versions = array(
+-    'file_entity' => array(
+-      'file_default_displays' => 1,
+-    ),
+-  );
+-
+-  return isset($api_versions[$owner][$api]) ?
+-    array('version' => $api_versions[$owner][$api]) : NULL;
++function brightcove_media_ctools_plugin_api($module, $api) {
++  if ($module == 'file_entity' && $api == 'file_default_displays') {
++    return array(
++      'version' => 1,
++    );
++  }
+ }
+ 
+ /**

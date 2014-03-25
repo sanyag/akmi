@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the AK Catalouge feature.
+ */
+
+include_once('ak_catalouge.features.inc');

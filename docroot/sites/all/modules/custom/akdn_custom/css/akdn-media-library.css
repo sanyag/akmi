@@ -1,0 +1,15 @@
+#media-browser-library-list{}
+  #media-browser-library-list li{}
+    #media-browser-library-list li a{}
+      #media-browser-library-list li .media-item{
+        height: 140px;
+      }
+        #media-browser-library-list li .media-thumbnail{}
+          #media-browser-library-list li .label-wrapper{}
+            #media-browser-library-list li .label-wrapper .media-filename{
+              text-overflow: inherit;
+              white-space: normal;
+              line-height: 1;
+              max-height: 30px;
+              text-align: left;
+            }

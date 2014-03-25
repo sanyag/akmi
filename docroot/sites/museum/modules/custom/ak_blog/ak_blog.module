@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the AK Blog feature.
+ */
+
+include_once 'ak_blog.features.inc';

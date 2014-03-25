@@ -1,0 +1,87 @@
+.no_mp {
+  margin: 0;
+  padding: 0;
+}
+.no_bullets {
+  list-style: none;
+  list-style-image: none;
+}
+.inline-block {
+  display: -moz-inline-stack;
+  display: inline-block;
+  vertical-align: top;
+  zoom: 1;
+  *display: inline;
+}
+/*Transformations*/
+/**
+ * This mixin will make the HTML list view format's <li>'s float left as inline.
+ */
+.views_html_list_float_left .view-content > .item-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  list-style-image: none;
+}
+.views_html_list_float_left .view-content > .item-list ul li {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  list-style-image: none;
+  float: left;
+  margin-right: 5px;
+}
+/*******************************************************************
+*                          NODE PAGES                             *
+*******************************************************************/
+.page-node.node-type-event .field-type-image,
+.page-node.node-type-article .field-type-image,
+.page-node.node-type-publication .field-type-image,
+.page-node.node-type-speech .field-type-image,
+.page-node.node-type-person .field-type-image,
+.page-node.node-type-podcast .field-type-image {
+  float: right;
+  margin-bottom: 30px;
+  margin-left: 30px;
+}
+.page-node.node-type-gallery .field-type-image {
+  float: none;
+  margin: 0;
+}
+.page-node.node-type-gallery .field-type-image .field-item {
+  display: inline;
+  margin-right: 10px;
+}
+.page-node.node-type-gallery .field-name-gallery-images .field-item-gallery-image {
+  display: inline;
+  margin-right: 10px;
+}
+.page-node.node-type-publication .content .field-name-field-publication-file .field-item {
+  margin-bottom: 10px;
+}
+.page-node.node-type-event .content .field-name-field-event-date .field-item,
+.page-node.node-type-event .content .field-name-field-event-location .field-item {
+  line-height: 145%;
+  font-weight: bold;
+}
+.page-node.node-type-event .content .field-name-field-event-location .field-item {
+  margin-bottom: 10px;
+}
+.page-node .group_meta_info .field {
+  margin-bottom: 5px;
+}
+.box-lightbrown {
+  -webkit-border-radius: 5px 5px 5px 5px;
+  -moz-border-radius: 5px 5px 5px 5px;
+  border-radius: 5px 5px 5px 5px;
+  background: #f2edde;
+  padding: 10px;
+  margin: 0px 10px 10px 0px;
+  float: left;
+}
+/*******************************************************************
+*                          PODCASTS                               *
+*******************************************************************/
+.field-name-field-podcast-video .field-name-field-folder {
+  display: none;
+}

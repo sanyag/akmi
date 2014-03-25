@@ -1,0 +1,66 @@
+--- a/assets/js/flexslider.load.js	2012-05-17 22:59:14.000000000 +0200
++++ b/assets/js/flexslider.load.js	2012-07-21 01:28:30.817802400 +0200
+@@ -10,7 +10,14 @@
+         if (settings.flexslider !== undefined) {
+           var optionset = settings.flexslider.instances[id];
+           if (optionset) {
+-            $this.flexslider(settings.flexslider.optionsets[optionset]);
++           var fsettings = settings.flexslider.optionsets[optionset];
++           fsettings.start = new Function("slider",fsettings.start);
++           fsettings.after = new Function("slider",fsettings.after);
++           fsettings.before = new Function("slider",fsettings.before);
++           fsettings.end = new Function("slider",fsettings.end);           
++           $this.flexslider(fsettings);
+           }
+           else {
+             $this.flexslider();
+
+--- a/flexslider.admin.inc	2012-05-17 22:59:14.000000000 +0200
++++ b/flexslider.admin.inc	2012-07-21 01:13:23.935931700 +0200
+@@ -259,8 +259,36 @@
+     '#description' => t('Declare custom control navigation. Example would be ".flex-control-nav li" or "#tabs-nav li img", etc. The number of elements in your controlNav should match the number of slides/tabs.'),
+     '#default_value' => isset($options['manualControls']) ? $options['manualControls'] : '',
+   );
+
++   // Callbacks Functions
++  $form['callbacks'] = array(
++    '#type' => 'fieldset',
++    '#title' => t('Callbacks Functions'),
++  );
++  $form['callbacks']['start'] = array(
++    '#type' => 'textarea',
++    '#title' => t('Start Callback function'),
++    '#description' => t('Callback: function(slider) - Fires when the slider loads the first slide'),
++    '#default_value' => isset($options['start']) ? $options['start'] : '',
++  );
++  $form['callbacks']['before'] = array(
++    '#type' => 'textarea',
++    '#title' => t('Before Callback function'),
++    '#description' => t('Callback: function(slider) - Fires asynchronously with each slider animation'),
++    '#default_value' => isset($options['before']) ? $options['before'] : '',
++  );
++  $form['callbacks']['after'] = array(
++    '#type' => 'textarea',
++    '#title' => t('After Callback function'),
++    '#description' => t('Callback: function(slider) - Fires after each slider animation completes'),
++    '#default_value' => isset($options['after']) ? $options['after'] : '',
++  );
++  $form['callbacks']['end'] = array(
++    '#type' => 'textarea',
++    '#title' => t('End Callback function'),
++    '#description' => t('Callback: function(slider) - Fires when the slider reaches the last slide (asynchronous)'),
++    '#default_value' => isset($options['end']) ? $options['end'] : '',
++  );
+   if (module_exists('bulk_export')) {
+   }
+   else {
+@@ -392,7 +420,10 @@
+   $optionset->options['pauseOnAction'] = $form_state['values']['pauseOnAction'];
+   $optionset->options['controlsContainer'] = $form_state['values']['controlsContainer'];
+   $optionset->options['manualControls'] = $form_state['values']['manualControls'];
++  $optionset->options['start'] = $form_state['values']['start'];
++  $optionset->options['end'] = $form_state['values']['end'];
++  $optionset->options['before'] = $form_state['values']['before'];
++  $optionset->options['after'] = $form_state['values']['after'];
+   ctools_include('export');
+   ctools_export_crud_save('flexslider_optionset', $optionset);

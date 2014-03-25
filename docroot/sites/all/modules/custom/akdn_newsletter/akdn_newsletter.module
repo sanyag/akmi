@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the AKDN newsletter feature.
+ */
+
+include_once 'akdn_newsletter.features.inc';

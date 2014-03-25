@@ -1,0 +1,46 @@
+From 9d1d75471abdd2eecf55951726044350f41eacff Mon Sep 17 00:00:00 2001
+From: samcllui <samcllui@gmail.com>
+Date: Thu, 28 Feb 2013 10:53:07 -0800
+Subject: [PATCH] Patch for VBO translation bug
+
+---
+ .../actions/modify.action.inc                      |   12 +++++++++---
+ 1 files changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/docroot/sites/all/modules/contrib/views_bulk_operations/actions/modify.action.inc b/docroot/sites/all/modules/contrib/views_bulk_operations/actions/modify.action.inc
+index 77bfc0b..32d02eb 100644
+--- a/docroot/sites/all/modules/contrib/views_bulk_operations/actions/modify.action.inc
++++ b/docroot/sites/all/modules/contrib/views_bulk_operations/actions/modify.action.inc
+@@ -44,12 +44,18 @@ function views_bulk_operations_modify_action($entity, $context) {
+         }
+       }
+ 
++      if (in_array($key, array('field_agency','field_country','field_focus_area'))) {
++        $langcode = (isset($entity->translations->original) && $context['entity_type'] != 'user') ? $entity->translations->original : LANGUAGE_NONE;
++      } else {
++        $langcode = LANGUAGE_NONE;
++      }
++
+       if (in_array($key, $context['append']['bundle_' . $bundle_name]) && !empty($entity->$key)) {
+-        $entity->{$key}[LANGUAGE_NONE] = array_merge($entity->{$key}[LANGUAGE_NONE], $pseudo_entity->{$key}[LANGUAGE_NONE]);
++        $entity->{$key}[$langcode] = array_merge($entity->{$key}[$langcode], $pseudo_entity->{$key}[LANGUAGE_NONE]);
+ 
+         // Check if we breached cardinality, and notify the user.
+         $field_info = field_info_field($key);
+-        $field_count = count($entity->{$key}[LANGUAGE_NONE]);
++        $field_count = count($entity->{$key}[$langcode]);
+         if ($field_info['cardinality'] != FIELD_CARDINALITY_UNLIMITED && $field_count > $field_info['cardinality']) {
+           $entity_label = entity_label($context['entity_type'], $entity);
+           $warning = t('Tried to set !field_count values for field !field_name that supports a maximum of !cardinality.',
+@@ -60,7 +66,7 @@ function views_bulk_operations_modify_action($entity, $context) {
+         }
+       }
+       else {
+-        $entity->$key = $pseudo_entity->$key;
++        $entity->{$key}[$langcode] = $pseudo_entity->{$key}[LANGUAGE_NONE];
+       }
+     }
+   }
+-- 
+1.7.5.4
+

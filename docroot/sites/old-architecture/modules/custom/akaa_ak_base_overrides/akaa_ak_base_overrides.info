@@ -1,0 +1,9 @@
+name = AKAA: AK Base Overrides
+core = 7.x
+package = AKAA
+version = 7.x-1.0
+project = akaa_ak_base_overrides
+dependencies[] = ak_base
+features[features_api][] = api:1
+features[features_override_items][] = context.article-meta
+features[features_overrides][] = context.article-meta.reactions|block

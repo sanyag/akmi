@@ -1,0 +1,99 @@
+<?php
+function media_edit_fields_media_format_form_prepare_alter(&$form, &$form_state, $form_id) {
+  $form_state['file'] = $form['#media'];
+  //field_attach_form('file', $form['#media'], $form, $form_state);
+
+  // Set the title to the "real" image title
+  $title = field_get_items('file', $form['#media'], 'field_title');
+  if (!empty($title)) {
+    $title = $title[0]['value'];
+    $form['preview']['#title'] = $title;
+  }
+  else {
+    $title = $form['options']['alt']['#default_value'];
+  }
+  $form['options']['#title'] = t('Options');
+  $form['options']['alt']['#title'] = t('Image ALT text');
+  $form['options']['alt']['#default_value'] = $title;
+  $form['options']['title'] = array(
+    '#title'         => 'Caption',
+    '#default_value' => $title,
+    '#type'          => 'textfield',
+    '#description'   => t('This text will be displayed as a caption below the image, and used in the image TITLE tag.'),
+  );
+  $form['options']['layout'] = array(
+    '#title'       => t('Alignment'),
+    '#type'        => 'select',
+    '#options'     => array('inline-right' => 'Right', 'inline-left' => 'Left'),
+    '#description' => t('Choose whether the image should be floated left or right'),
+  );
+  $form['heading']['#markup'] = 'Embedding <em class="placeholder">'. $title .'</em>';
+}
+
+/**
+* Implements hook_form_FORM_ID_alter().
+*/
+function media_edit_fields_form_media_add_upload_alter(&$form, &$form_state) {
+  //$form['#submit'][] = 'media_edit_fields_file_added_submit';
+}
+
+/**
+* Implements hook_form_FORM_ID_alter().
+*/
+function media_edit_fields_form_media_internet_add_alter(&$form, &$form_state) {
+  $form['#submit'][] = 'media_edit_fields_file_added_submit';
+}
+
+/**
+* Form submit callback added to Media browser forms that add new files.
+*
+* This function changes the redirect of such forms to the file editing form,
+* so that the file's fields can be edited.
+*/
+function media_edit_fields_file_added_submit(&$form, &$form_state) {
+  // @todo media_internet_add_submit() and media_internet_add_submit() should
+  // set $form_state['file'], so we don't have to find the file id in this
+  // indirect and fragile way.
+  $fid = $form_state['redirect'][1]['query']['fid'];
+  $form_state['redirect'] = array('file/' . $fid . '/edit', array('query' => array('render' => 'media-popup')));
+}
+
+/**
+* Implements hook_form_FORM_ID_alter().
+*/
+function media_edit_fields_form_file_entity_edit_alter(&$form, &$form_state) {
+  if (isset($_GET['render']) && $_GET['render'] == 'media-popup') {
+    $form['actions']['delete']['#access'] = FALSE;
+    $form['actions']['submit']['#value'] = t('Submit');
+    $form['actions']['submit']['#submit'][] = 'media_edit_fields_fields_edited_submit';
+
+    $path = drupal_get_path('module', 'media');
+    $form['#attached']['js'][] = $path . '/js/media.core.js';
+
+    // Add some CSS to make things look more consistent
+    $path = drupal_get_path('module', 'media_edit_fields');
+    $form['#attached']['css'][] = $path . '/media_edit_fields.css';
+    $form['#attached']['js'][] = $path . '/media_edit_fields.js';
+
+    $form['intro'] = array(
+      '#markup' => t('Please complete this form as fully as possible to ensure that the image is correctly categorised for future use.'),
+    );
+    $form['title_text'] = array(
+      '#markup' => t('Adding file <em>!file</em>', array('!file' => $form_state['file']->filename)),
+      '#prefix' => '<h1>',
+      '#suffix' => '</h1>',
+      '#weight' => -11,
+    );
+  }
+}
+
+/**
+* Form submit callback after fields have been edited for a newly added file in the Media browser.
+*
+* Redirect back to the page that informs the Media browser that a file is ready
+* for insertion into WYSIWYG or a field.
+*/
+function media_edit_fields_fields_edited_submit($form, &$form_state) {
+  $file = $form_state['file'];
+  $form_state['redirect'] = array('media/browser', array('query' => array('render' => 'media-popup', 'fid' => $file->fid)));
+}

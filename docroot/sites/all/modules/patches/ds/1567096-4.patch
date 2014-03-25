@@ -1,0 +1,26 @@
+diff --git a/modules/ds_extras/ds_extras.admin.inc b/modules/ds_extras/ds_extras.admin.inc
+index 6edce7b..8ad9abd 100644
+--- a/modules/ds_extras/ds_extras.admin.inc
++++ b/modules/ds_extras/ds_extras.admin.inc
+@@ -708,8 +708,8 @@ function _ds_extras_page_title_options($settings, $entity_type) {
+     '#weight' => 101,
+     '#states' => array(
+       'visible' => array(
+-        ':input[name="page_option_type"]' => array('value' => '2'),
+-        ':input[name="additional_settings[ds_page_title_options][page_option_type]"]' => array('value' => '2'),
++        array(':input[name="page_option_type"]' => array('value' => '2')),
++        array(':input[name="additional_settings[ds_page_title_options][page_option_type]"]' => array('value' => '2')),
+       ),
+     ),
+   );
+@@ -724,8 +724,8 @@ function _ds_extras_page_title_options($settings, $entity_type) {
+     '#weight' => 102,
+     '#states' => array(
+       'visible' => array(
+-        ':input[name="page_option_type"]' => array('value' => '2'),
+-        ':input[name="additional_settings[ds_page_title_options][page_option_type]"]' => array('value' => '2'),
++        array(':input[name="page_option_type"]' => array('value' => '2')),
++        array(':input[name="additional_settings[ds_page_title_options][page_option_type]"]' => array('value' => '2')),
+       ),
+     ),
+   );
