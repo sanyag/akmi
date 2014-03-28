@@ -1,4 +1,4 @@
-AKDN
+AKMI
 ====
 
 Repository for the AKDN projects.
